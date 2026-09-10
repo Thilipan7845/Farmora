@@ -1,0 +1,57 @@
+{
+    "crop": "cotton",
+    "rows_total": 1675,
+    "rows_train": 1340,
+    "rows_test": 335,
+    "linear_regression": {
+        "MAE": 365.8751439965973,
+        "RMSE": 502.73672830267475,
+        "R2": 0.7446732105779421
+    },
+    "random_forest": {
+        "MAE": 688.9260558710774,
+        "RMSE": 1070.826102855778,
+        "R2": -0.15838534245086122
+    },
+    "best_model": "Linear Regression",
+    "best_model_metrics": {
+        "MAE": 365.8751439965973,
+        "RMSE": 502.73672830267475,
+        "R2": 0.7446732105779421
+    },
+    "features": [
+        "Modal_Price",
+        "Min_Price",
+        "Max_Price",
+        "Price_Range",
+        "Modal_Position",
+        "Year",
+        "Month",
+        "Week_Of_Year",
+        "Day_Of_Week",
+        "Quarter",
+        "Lag_1",
+        "Lag_2",
+        "Lag_3",
+        "Lag_5",
+        "Lag_7",
+        "Lag_14",
+        "Lag_30",
+        "Rolling_Mean_3",
+        "Rolling_Mean_7",
+        "Rolling_Mean_14",
+        "Rolling_Mean_30",
+        "Rolling_Std_7",
+        "Rolling_Std_14",
+        "Price_Change_1",
+        "Price_Change_3",
+        "Price_Change_7",
+        "Price_Change_14",
+        "Price_Change_Pct_1",
+        "Price_Change_Pct_7",
+        "Price_Change_Pct_14",
+        "Market",
+        "Variety",
+        "Grade"
+    ]
+}

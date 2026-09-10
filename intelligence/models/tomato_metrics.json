@@ -1,0 +1,57 @@
+{
+    "crop": "tomato",
+    "rows_total": 1934,
+    "rows_train": 1547,
+    "rows_test": 387,
+    "linear_regression": {
+        "MAE": 276.14072295922523,
+        "RMSE": 421.0258014556832,
+        "R2": 0.7299270337570432
+    },
+    "random_forest": {
+        "MAE": 292.80382385590957,
+        "RMSE": 467.4829960307517,
+        "R2": 0.6670374957239267
+    },
+    "best_model": "Linear Regression",
+    "best_model_metrics": {
+        "MAE": 276.14072295922523,
+        "RMSE": 421.0258014556832,
+        "R2": 0.7299270337570432
+    },
+    "features": [
+        "Modal_Price",
+        "Min_Price",
+        "Max_Price",
+        "Price_Range",
+        "Modal_Position",
+        "Year",
+        "Month",
+        "Week_Of_Year",
+        "Day_Of_Week",
+        "Quarter",
+        "Lag_1",
+        "Lag_2",
+        "Lag_3",
+        "Lag_5",
+        "Lag_7",
+        "Lag_14",
+        "Lag_30",
+        "Rolling_Mean_3",
+        "Rolling_Mean_7",
+        "Rolling_Mean_14",
+        "Rolling_Mean_30",
+        "Rolling_Std_7",
+        "Rolling_Std_14",
+        "Price_Change_1",
+        "Price_Change_3",
+        "Price_Change_7",
+        "Price_Change_14",
+        "Price_Change_Pct_1",
+        "Price_Change_Pct_7",
+        "Price_Change_Pct_14",
+        "Market",
+        "Variety",
+        "Grade"
+    ]
+}
