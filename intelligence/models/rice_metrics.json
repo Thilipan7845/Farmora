@@ -1,0 +1,57 @@
+{
+    "crop": "rice",
+    "rows_total": 1694,
+    "rows_train": 1355,
+    "rows_test": 339,
+    "linear_regression": {
+        "MAE": 542.9461722877394,
+        "RMSE": 995.1058127463918,
+        "R2": 0.5722687306215448
+    },
+    "random_forest": {
+        "MAE": 585.6124456586513,
+        "RMSE": 1050.1883702146886,
+        "R2": 0.5236053412689062
+    },
+    "best_model": "Linear Regression",
+    "best_model_metrics": {
+        "MAE": 542.9461722877394,
+        "RMSE": 995.1058127463918,
+        "R2": 0.5722687306215448
+    },
+    "features": [
+        "Modal_Price",
+        "Min_Price",
+        "Max_Price",
+        "Price_Range",
+        "Modal_Position",
+        "Year",
+        "Month",
+        "Week_Of_Year",
+        "Day_Of_Week",
+        "Quarter",
+        "Lag_1",
+        "Lag_2",
+        "Lag_3",
+        "Lag_5",
+        "Lag_7",
+        "Lag_14",
+        "Lag_30",
+        "Rolling_Mean_3",
+        "Rolling_Mean_7",
+        "Rolling_Mean_14",
+        "Rolling_Mean_30",
+        "Rolling_Std_7",
+        "Rolling_Std_14",
+        "Price_Change_1",
+        "Price_Change_3",
+        "Price_Change_7",
+        "Price_Change_14",
+        "Price_Change_Pct_1",
+        "Price_Change_Pct_7",
+        "Price_Change_Pct_14",
+        "Market",
+        "Variety",
+        "Grade"
+    ]
+}
