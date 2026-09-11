@@ -3,10 +3,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.core.security import get_current_user
 from app.database.supabase_client import supabase
 from app.schemas.buyer import BuyerProfileCreate
-
+from app.schemas.buyer_requirement import BuyerRequirementCreate
 
 router = APIRouter()
 
+
+# ============================================================
+# BUYER PROFILE
+# ============================================================
 
 @router.post("/profile")
 def create_buyer_profile(
@@ -103,4 +107,74 @@ def update_buyer_profile(
     return {
         "message": "Buyer profile updated successfully",
         "buyer": result.data[0],
+    }
+
+
+# ============================================================
+# BUYER REQUIREMENTS
+# ============================================================
+
+@router.post("/requirements")
+def create_buyer_requirement(
+    requirement: BuyerRequirementCreate,
+    current_user: dict = Depends(get_current_user),
+):
+    buyer_id = current_user["sub"]
+
+    # Make sure the buyer profile exists
+    buyer_result = (
+        supabase.table("buyers")
+        .select("id")
+        .eq("id", buyer_id)
+        .single()
+        .execute()
+    )
+
+    if not buyer_result.data:
+        raise HTTPException(
+            status_code=404,
+            detail="Buyer profile not found",
+        )
+
+    # Create the buyer requirement
+    result = (
+        supabase.table("buyer_requirements")
+        .insert(
+            {
+                "buyer_id": buyer_id,
+                **requirement.model_dump(),
+            }
+        )
+        .execute()
+    )
+
+    if not result.data:
+        raise HTTPException(
+            status_code=400,
+            detail="Failed to create buyer requirement",
+        )
+
+    return {
+        "message": "Buyer requirement created successfully",
+        "requirement": result.data[0],
+    }
+
+
+@router.get("/requirements")
+def get_buyer_requirements(
+    current_user: dict = Depends(get_current_user),
+):
+    buyer_id = current_user["sub"]
+
+    result = (
+        supabase.table("buyer_requirements")
+        .select("*")
+        .eq("buyer_id", buyer_id)
+        .order("created_at", desc=True)
+        .execute()
+    )
+
+    return {
+        "buyer_id": buyer_id,
+        "requirements": result.data,
     }
