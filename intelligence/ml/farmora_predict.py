@@ -1,4 +1,5 @@
 import os
+import json
 import joblib
 import pandas as pd
 
@@ -86,6 +87,31 @@ def load_price_model(crop):
 
 
 
+def load_model_metrics(crop):
+
+    path = (
+        f"{MODEL_DIR}/{crop}_metrics.json"
+    )
+
+
+    if not os.path.exists(path):
+
+        raise Exception(
+            f"Metrics not found for {crop}"
+        )
+
+
+    with open(
+        path,
+        "r"
+    ) as file:
+
+        return json.load(file)
+
+
+
+
+
 def predict_market_decision(
         crop,
         input_data,
@@ -98,30 +124,100 @@ def predict_market_decision(
     crop = crop.lower()
 
 
-    # Load crop-specific model
+
+    # -----------------------------
+    # Load model
+    # -----------------------------
 
     model = load_price_model(crop)
 
 
 
-    # Convert input to dataframe
+    # -----------------------------
+    # Prepare input
+    # -----------------------------
 
     df = pd.DataFrame(
         [input_data]
     )
 
 
-    # Keep only required features
-
     df = df[FEATURES]
 
 
 
+    # -----------------------------
     # Predict future price
+    # -----------------------------
 
     predicted_price = model.predict(df)[0]
 
 
+
+    # -----------------------------
+    # Price range + confidence
+    # -----------------------------
+
+    metrics = load_model_metrics(crop)
+
+
+    best_model = metrics[
+        "best_model"
+    ]
+
+
+    if best_model == "Linear Regression":
+
+        model_metrics = metrics[
+            "linear_regression"
+        ]
+
+
+    elif best_model == "Random Forest":
+
+        model_metrics = metrics[
+            "random_forest"
+        ]
+
+
+    else:
+
+        model_metrics = metrics[
+            "xgboost"
+        ]
+
+
+
+    mae = model_metrics[
+        "MAE"
+    ]
+
+
+    r2 = model_metrics[
+        "R2"
+    ]
+
+
+
+    lower_price = (
+        predicted_price - mae
+    )
+
+
+    upper_price = (
+        predicted_price + mae
+    )
+
+
+    confidence = (
+        r2 * 100
+    )
+
+
+
+    # -----------------------------
+    # Current price
+    # -----------------------------
 
     current_price = input_data[
         "Modal_Price"
@@ -129,38 +225,56 @@ def predict_market_decision(
 
 
 
+    # -----------------------------
     # Decision engine
+    # -----------------------------
 
     result = decide_sale(
 
-        crop=crop,
+    crop=crop,
 
-        prediction_horizon_days=
-            HORIZONS[crop],
+    prediction_horizon_days=HORIZONS[crop],
 
-        current_price=current_price,
+    current_price=current_price,
 
-        predicted_price=predicted_price,
+    predicted_price=predicted_price,
 
-        storage_available=storage_available,
+    storage_available=storage_available,
 
-        storage_cost=storage_cost,
+    storage_cost=storage_cost,
 
-        demand_level=demand_level,
+    demand_level=demand_level,
 
-        quantity=quantity
+    quantity=quantity,
+
+    confidence_score=confidence
     )
 
 
-
-    # Add prediction details
-
-    result["crop"] = crop
-
+    # -----------------------------
+    # Add prediction intelligence
+    # -----------------------------
 
     result["predicted_price"] = float(
         round(predicted_price, 2)
     )
+
+
+    result["expected_price_range"] = {
+
+        "lower":
+            float(round(lower_price, 2)),
+
+        "upper":
+            float(round(upper_price, 2))
+
+    }
+
+
+    result["confidence_score"] = float(
+        round(confidence, 2)
+    )
+
 
 
     return result

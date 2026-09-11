@@ -1,6 +1,7 @@
 from crop_profile import get_crop_profile
 
 
+
 def decide_sale(
     crop,
     prediction_horizon_days,
@@ -9,8 +10,10 @@ def decide_sale(
     storage_available,
     storage_cost,
     demand_level,
-    quantity
+    quantity,
+    confidence_score
 ):
+
 
     # -----------------------------
     # Price change calculation
@@ -22,17 +25,23 @@ def decide_sale(
     ) * 100
 
 
+
     # -----------------------------
     # Trend calculation
     # -----------------------------
 
     if change_percent > 2:
+
         trend = "RISING"
 
+
     elif change_percent < -2:
+
         trend = "FALLING"
 
+
     else:
+
         trend = "STABLE"
 
 
@@ -59,13 +68,23 @@ def decide_sale(
     ]
 
 
-    # Check if waiting exceeds shelf life
 
     waiting_risk = (
         prediction_horizon_days
         >
         shelf_life_days
     )
+
+
+
+    # -----------------------------
+    # Confidence intelligence
+    # -----------------------------
+
+    low_confidence = (
+        confidence_score < 50
+    )
+
 
 
     reasons = []
@@ -77,18 +96,21 @@ def decide_sale(
     # -----------------------------
 
 
+
     # 1. Falling price
-    # Sell immediately if prices are expected to drop
 
     if (
         trend == "FALLING"
-        and (
+        and
+        (
             not storage_available
             or storage_cost == "HIGH"
         )
     ):
 
+
         recommendation = "SELL NOW"
+
 
         reasons.append(
             "Expected price decrease"
@@ -96,15 +118,33 @@ def decide_sale(
 
 
 
-    # 2. Rising price but waiting is risky
-    # Shelf life is shorter than prediction period
+    # 2. Rising but prediction confidence is low
+
+    elif (
+        trend == "RISING"
+        and low_confidence
+    ):
+
+
+        recommendation = "SELL NOW"
+
+
+        reasons.append(
+            "Low prediction confidence"
+        )
+
+
+
+    # 3. Rising but shelf life risk
 
     elif (
         trend == "RISING"
         and waiting_risk
     ):
 
+
         recommendation = "SELL NOW"
+
 
         reasons.append(
             "Expected price increase period exceeds crop shelf life"
@@ -112,18 +152,20 @@ def decide_sale(
 
 
 
-    # 3. Rising price + safe storage conditions
+    # 4. Rising + safe waiting
 
     elif (
         trend == "RISING"
         and storage_available
         and storage_cost == "LOW"
         and not waiting_risk
+        and not low_confidence
         and (
             not cold_storage_required
             or storage_available
         )
     ):
+
 
         recommendation = "CONSIDER WAITING"
 
@@ -151,9 +193,10 @@ def decide_sale(
 
 
 
-    # 4. Large quantity risk management
+    # 5. Quantity risk
 
     elif quantity > 1000:
+
 
         recommendation = "PARTIAL SELL"
 
@@ -164,9 +207,10 @@ def decide_sale(
 
 
 
-    # 5. Default
+    # 6. Default
 
     else:
+
 
         recommendation = "SELL NOW"
 
@@ -177,41 +221,55 @@ def decide_sale(
 
 
 
-    # -----------------------------
-    # Return result
-    # -----------------------------
-
     return {
+
 
         "crop": crop,
 
+
         "current_price": current_price,
+
 
         "predicted_price": predicted_price,
 
+
         "expected_change_percent":
-            float(round(change_percent, 2)),
+            float(round(change_percent,2)),
+
 
         "prediction_horizon_days":
             prediction_horizon_days,
 
+
+        "confidence_score":
+            confidence_score,
+
+
         "trend": trend,
+
 
         "recommendation":
             recommendation,
 
+
         "reasons":
             reasons,
 
+
         "crop_profile": {
+
 
             "shelf_life_days":
                 shelf_life_days,
 
+
             "storage_risk":
                 storage_risk,
 
+
             "cold_storage_required":
                 cold_storage_required
+
         }
+
     }
