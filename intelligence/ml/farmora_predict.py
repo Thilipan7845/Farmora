@@ -4,12 +4,16 @@ import joblib
 import pandas as pd
 
 from decision_engine import decide_sale
-
+from profit_engine import calculate_profit
+from explanation_engine import generate_farmer_explanation
 
 MODEL_DIR = "intelligence/models"
 
 
+
+# ============================================================
 # Crop prediction horizons
+# ============================================================
 
 HORIZONS = {
 
@@ -28,6 +32,11 @@ HORIZONS = {
 }
 
 
+
+
+# ============================================================
+# Model Features
+# ============================================================
 
 FEATURES = [
 
@@ -108,10 +117,11 @@ FEATURES = [
 
 
 
-# ============================================================
-# LOAD MODEL
-# ============================================================
 
+
+# ============================================================
+# Load Crop Model
+# ============================================================
 
 def load_price_model(crop):
 
@@ -135,10 +145,10 @@ def load_price_model(crop):
 
 
 
-# ============================================================
-# LOAD METRICS
-# ============================================================
 
+# ============================================================
+# Load Model Metrics
+# ============================================================
 
 def load_model_metrics(crop):
 
@@ -164,10 +174,11 @@ def load_model_metrics(crop):
 
 
 
-# ============================================================
-# MAIN PREDICTION FUNCTION
-# ============================================================
 
+
+# ============================================================
+# Main Farmora Intelligence Function
+# ============================================================
 
 def predict_market_decision(
 
@@ -181,7 +192,11 @@ def predict_market_decision(
 
         demand_level,
 
-        quantity
+        quantity,
+
+        transport_cost,
+
+        storage_expense
 
 ):
 
@@ -190,22 +205,20 @@ def predict_market_decision(
 
 
 
-    # -----------------------------
+    # --------------------------------------------------------
     # Load model
-    # -----------------------------
+    # --------------------------------------------------------
 
     model = load_price_model(crop)
 
 
 
-    # -----------------------------
+    # --------------------------------------------------------
     # Prepare input
-    # -----------------------------
+    # --------------------------------------------------------
 
     df = pd.DataFrame(
-
         [input_data]
-
     )
 
 
@@ -213,76 +226,64 @@ def predict_market_decision(
 
 
 
-    # -----------------------------
+    # --------------------------------------------------------
     # Predict future price
-    # -----------------------------
+    # --------------------------------------------------------
 
-    predicted_price = model.predict(df)[0]
+    predicted_price = float(
+
+        model.predict(df)[0]
+
+    )
 
 
 
-    # -----------------------------
+
+    # --------------------------------------------------------
     # Price range + confidence
-    # -----------------------------
+    # --------------------------------------------------------
 
     metrics = load_model_metrics(crop)
 
 
 
     best_model = metrics[
-
         "best_model"
-
     ]
 
 
 
     if best_model == "Linear Regression":
 
-
         model_metrics = metrics[
-
             "linear_regression"
-
         ]
-
 
 
     elif best_model == "Random Forest":
 
-
         model_metrics = metrics[
-
             "random_forest"
-
         ]
-
 
 
     else:
 
-
         model_metrics = metrics[
-
             "xgboost"
-
         ]
 
 
 
-    mae = model_metrics[
 
-        "MAE"
-
-    ]
-
+    mae = float(
+        model_metrics["MAE"]
+    )
 
 
-    r2 = model_metrics[
-
-        "R2"
-
-    ]
+    r2 = float(
+        model_metrics["R2"]
+    )
 
 
 
@@ -291,7 +292,6 @@ def predict_market_decision(
         predicted_price - mae
 
     )
-
 
 
     upper_price = (
@@ -310,29 +310,55 @@ def predict_market_decision(
 
 
 
-    # -----------------------------
-    # Current price
-    # -----------------------------
-
-    current_price = input_data[
-
-        "Modal_Price"
-
-    ]
 
 
+    # --------------------------------------------------------
+    # Current Price
+    # --------------------------------------------------------
 
-    # -----------------------------
-    # Decision engine
-    # -----------------------------
+    current_price = float(
+
+        input_data["Modal_Price"]
+
+    )
+
+
+
+
+
+    # --------------------------------------------------------
+    # Profit Calculation
+    # --------------------------------------------------------
+
+    profit_analysis = calculate_profit(
+
+        quantity=quantity,
+
+        current_price=current_price,
+
+        predicted_price=predicted_price,
+
+        transport_cost=transport_cost,
+
+        storage_cost=storage_expense
+
+    )
+
+
+
+
+
+    # --------------------------------------------------------
+    # Decision Engine
+    # --------------------------------------------------------
 
     result = decide_sale(
-
 
         crop=crop,
 
 
-        prediction_horizon_days=HORIZONS[crop],
+        prediction_horizon_days=
+            HORIZONS[crop],
 
 
         current_price=current_price,
@@ -341,15 +367,15 @@ def predict_market_decision(
         predicted_price=predicted_price,
 
 
-
         expected_price_range={
 
-            "lower": lower_price,
+            "lower":
+                lower_price,
 
-            "upper": upper_price
+            "upper":
+                upper_price
 
         },
-
 
 
         storage_available=storage_available,
@@ -364,20 +390,27 @@ def predict_market_decision(
         quantity=quantity,
 
 
-        confidence_score=confidence
+        confidence_score=confidence,
+
+
+        profit_analysis=profit_analysis
 
     )
 
 
 
-    # -----------------------------
-    # Add prediction intelligence
-    # -----------------------------
 
+
+    # --------------------------------------------------------
+    # Add ML Intelligence Output
+    # --------------------------------------------------------
 
     result["predicted_price"] = float(
 
-        round(predicted_price, 2)
+        round(
+            predicted_price,
+            2
+        )
 
     )
 
@@ -388,13 +421,22 @@ def predict_market_decision(
 
         "lower":
 
-            float(round(lower_price, 2)),
+            float(
+                round(
+                    lower_price,
+                    2
+                )
+            ),
 
 
         "upper":
 
-            float(round(upper_price, 2))
-
+            float(
+                round(
+                    upper_price,
+                    2
+                )
+            )
 
     }
 
@@ -402,10 +444,34 @@ def predict_market_decision(
 
     result["confidence_score"] = float(
 
-        round(confidence, 2)
+        round(
+            confidence,
+            2
+        )
+
+    )
+
+        # --------------------------------------------------------
+    # Farmer Explanation
+    # --------------------------------------------------------
+
+    explanation = generate_farmer_explanation(
+
+        recommendation=result["recommendation"],
+
+        reasons=result["reasons"],
+
+        profit_analysis=result["profit_analysis"],
+
+        quantity_strategy=result["quantity_strategy"],
+
+        crop=crop,
+
+        confidence_score=result["confidence_score"]
 
     )
 
 
+    result["farmer_explanation"] = explanation
 
     return result

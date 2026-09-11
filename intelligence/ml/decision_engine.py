@@ -3,7 +3,7 @@ from crop_profile import get_crop_profile
 
 
 # ============================================================
-# Quantity Split Logic
+# Quantity Strategy
 # ============================================================
 
 def calculate_quantity_strategy(
@@ -11,18 +11,17 @@ def calculate_quantity_strategy(
     trend,
     confidence_score,
     range_supports_waiting,
-    storage_available
+    storage_available,
+    profit_difference
 ):
 
 
-    # --------------------------------------------------------
-    # Strong price opportunity
-    # Store more because waiting is beneficial
-    # --------------------------------------------------------
+    # High profit opportunity
+    # Store more quantity
 
     if (
-        trend == "RISING"
-        and confidence_score >= 80
+        profit_difference > 100000
+        and confidence_score >= 70
         and range_supports_waiting
         and storage_available
     ):
@@ -31,10 +30,7 @@ def calculate_quantity_strategy(
 
 
 
-    # --------------------------------------------------------
-    # High risk situation
-    # Sell maximum quantity
-    # --------------------------------------------------------
+    # Risk situation
 
     elif (
         trend == "FALLING"
@@ -46,9 +42,7 @@ def calculate_quantity_strategy(
 
 
 
-    # --------------------------------------------------------
-    # Normal situation
-    # --------------------------------------------------------
+    # Normal
 
     else:
 
@@ -85,7 +79,6 @@ def calculate_quantity_strategy(
                 (1 - sell_percentage) * 100,
                 2
             )
-
     }
 
 
@@ -106,12 +99,13 @@ def decide_sale(
     storage_cost,
     demand_level,
     quantity,
-    confidence_score
+    confidence_score,
+    profit_analysis
 ):
 
 
     # --------------------------------------------------------
-    # Price Change
+    # Price change
     # --------------------------------------------------------
 
     change_percent = (
@@ -123,6 +117,7 @@ def decide_sale(
         current_price
 
     ) * 100
+
 
 
 
@@ -146,8 +141,10 @@ def decide_sale(
 
 
 
+
+
     # --------------------------------------------------------
-    # Crop Intelligence
+    # Crop profile
     # --------------------------------------------------------
 
     crop_profile = get_crop_profile(crop)
@@ -171,9 +168,7 @@ def decide_sale(
 
     waiting_risk = (
 
-        prediction_horizon_days
-
-        >
+        prediction_horizon_days >
 
         shelf_life_days
 
@@ -181,8 +176,10 @@ def decide_sale(
 
 
 
+
+
     # --------------------------------------------------------
-    # Prediction Intelligence
+    # Prediction intelligence
     # --------------------------------------------------------
 
     lower_price = expected_price_range[
@@ -193,6 +190,31 @@ def decide_sale(
     upper_price = expected_price_range[
         "upper"
     ]
+
+
+
+    # Expected gain
+
+    expected_gain = (
+
+        predicted_price - current_price
+
+    )
+
+
+
+    # Price range opportunity
+
+    range_supports_waiting = (
+
+        expected_gain > 0
+
+        or
+
+        upper_price > current_price * 1.03
+
+    )
+
 
 
 
@@ -211,9 +233,21 @@ def decide_sale(
 
 
 
-    range_supports_waiting = (
 
-        lower_price > current_price
+    # --------------------------------------------------------
+    # Profit intelligence
+    # --------------------------------------------------------
+
+    profit_difference = profit_analysis[
+
+        "profit_difference"
+
+    ]
+
+
+    waiting_is_profitable = (
+
+        profit_difference > 0
 
     )
 
@@ -221,20 +255,18 @@ def decide_sale(
 
     reasons = []
 
-
     quantity_strategy = None
 
 
 
+
+
     # ========================================================
-    # DECISION RULES
+    # FINAL DECISION
     # ========================================================
 
 
-
-    # --------------------------------------------------------
     # 1. Falling price
-    # --------------------------------------------------------
 
     if trend == "FALLING":
 
@@ -247,35 +279,16 @@ def decide_sale(
         )
 
 
-        if quantity > 1000:
 
-            quantity_strategy = calculate_quantity_strategy(
-
-                quantity,
-
-                trend,
-
-                confidence_score,
-
-                range_supports_waiting,
-
-                storage_available
-
-            )
-
-
-
-    # --------------------------------------------------------
-    # 2. Rising but low confidence
-    # --------------------------------------------------------
+    # 2. Low confidence
 
     elif (
 
-        trend == "RISING"
+        low_confidence
 
         and
 
-        low_confidence
+        not waiting_is_profitable
 
     ):
 
@@ -289,17 +302,15 @@ def decide_sale(
 
 
 
-    # --------------------------------------------------------
-    # 3. Waiting exceeds shelf life
-    # --------------------------------------------------------
+    # 3. Crop cannot wait
 
     elif (
 
-        trend == "RISING"
+        waiting_risk
 
         and
 
-        waiting_risk
+        trend == "RISING"
 
     ):
 
@@ -313,21 +324,11 @@ def decide_sale(
 
 
 
-    # --------------------------------------------------------
-    # 4. Strong waiting opportunity
-    # --------------------------------------------------------
+    # 4. Profitable waiting opportunity
 
     elif (
 
-        trend == "RISING"
-
-        and
-
-        storage_available
-
-        and
-
-        storage_cost == "LOW"
+        waiting_is_profitable
 
         and
 
@@ -335,56 +336,49 @@ def decide_sale(
 
         and
 
+        storage_available
+
+        and
+
         range_supports_waiting
-
-        and
-
-        not waiting_risk
-
-        and
-
-        (
-            not cold_storage_required
-            or storage_available
-        )
 
     ):
 
 
-        recommendation = "CONSIDER WAITING"
+        if quantity > 1000:
 
 
-        reasons.append(
-            "Expected price increase"
-        )
+            recommendation = "PARTIAL SELL"
 
-
-        reasons.append(
-            "High prediction confidence"
-        )
-
-
-        reasons.append(
-            "Expected price range supports waiting"
-        )
-
-
-        reasons.append(
-            f"Crop shelf life supports {prediction_horizon_days} days waiting"
-        )
-
-
-        if storage_risk == "HIGH":
 
             reasons.append(
-                "Monitor spoilage risk"
+                "Profit opportunity detected"
+            )
+
+
+            reasons.append(
+                "Balanced selling and storage strategy"
+            )
+
+
+        else:
+
+
+            recommendation = "CONSIDER WAITING"
+
+
+            reasons.append(
+                "Waiting improves net realization"
+            )
+
+
+            reasons.append(
+                "Prediction confidence supports waiting"
             )
 
 
 
-    # --------------------------------------------------------
-    # 5. Large quantity management
-    # --------------------------------------------------------
+    # 5. Large quantity
 
     elif quantity > 1000:
 
@@ -397,25 +391,8 @@ def decide_sale(
         )
 
 
-        quantity_strategy = calculate_quantity_strategy(
 
-            quantity,
-
-            trend,
-
-            confidence_score,
-
-            range_supports_waiting,
-
-            storage_available
-
-        )
-
-
-
-    # --------------------------------------------------------
     # 6. Default
-    # --------------------------------------------------------
 
     else:
 
@@ -429,8 +406,37 @@ def decide_sale(
 
 
 
+
+
     # ========================================================
-    # OUTPUT
+    # Quantity recommendation
+    # ========================================================
+
+    if quantity > 1000:
+
+
+        quantity_strategy = calculate_quantity_strategy(
+
+            quantity,
+
+            trend,
+
+            confidence_score,
+
+            range_supports_waiting,
+
+            storage_available,
+
+            profit_difference
+
+        )
+
+
+
+
+
+    # ========================================================
+    # Return
     # ========================================================
 
     return {
@@ -439,69 +445,82 @@ def decide_sale(
         "crop": crop,
 
 
-        "current_price":
-            current_price,
+        "current_price": current_price,
 
 
-        "predicted_price":
-            predicted_price,
+        "predicted_price": predicted_price,
 
 
         "expected_change_percent":
-            float(
-                round(
-                    change_percent,
-                    2
-                )
+
+            round(
+                change_percent,
+                2
             ),
 
 
         "prediction_horizon_days":
+
             prediction_horizon_days,
 
 
         "confidence_score":
-            confidence_score,
+
+            round(
+                confidence_score,
+                2
+            ),
 
 
         "expected_price_range": {
 
-            "lower":
-                lower_price,
+            "lower": lower_price,
 
-            "upper":
-                upper_price
+            "upper": upper_price
 
         },
 
 
+        "profit_analysis":
+
+            profit_analysis,
+
+
         "trend":
+
             trend,
 
 
         "recommendation":
+
             recommendation,
 
 
         "reasons":
+
             reasons,
 
 
         "quantity_strategy":
+
             quantity_strategy,
 
 
         "crop_profile": {
 
+
             "shelf_life_days":
+
                 shelf_life_days,
 
 
             "storage_risk":
+
                 storage_risk,
 
 
             "cold_storage_required":
+
                 cold_storage_required
 
         }
