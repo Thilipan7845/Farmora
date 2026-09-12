@@ -4,6 +4,7 @@ from app.core.security import get_current_user
 from app.database.supabase_client import supabase
 from app.schemas.logistics import LogisticsCreate
 
+
 router = APIRouter()
 
 
@@ -18,9 +19,10 @@ def create_logistics(
 ):
     user_id = current_user["sub"]
 
-    # Get the order
+    # Check order
     order_result = (
-        supabase.table("orders")
+        supabase
+        .table("orders")
         .select("*")
         .eq("id", logistics.order_id)
         .single()
@@ -35,7 +37,7 @@ def create_logistics(
 
     order = order_result.data
 
-    # Make sure the current user owns the order
+    # Only the buyer who owns the order can create logistics
     if order["buyer_id"] != user_id:
         raise HTTPException(
             status_code=403,
@@ -44,7 +46,8 @@ def create_logistics(
 
     # Create logistics record
     result = (
-        supabase.table("logistics")
+        supabase
+        .table("logistics")
         .insert(
             {
                 "order_id": logistics.order_id,
@@ -89,31 +92,38 @@ def get_my_logistics(
 ):
     user_id = current_user["sub"]
 
-    # Get orders belonging to the buyer
     orders_result = (
-        supabase.table("orders")
+        supabase
+        .table("orders")
         .select("id")
         .eq("buyer_id", user_id)
         .execute()
     )
 
-    order_ids = [order["id"] for order in orders_result.data]
+    order_ids = [
+        order["id"]
+        for order in orders_result.data
+    ]
 
     if not order_ids:
         return {
-            "logistics": [],
+            "logistics": []
         }
 
     result = (
-        supabase.table("logistics")
+        supabase
+        .table("logistics")
         .select("*")
         .in_("order_id", order_ids)
-        .order("created_at", desc=True)
+        .order(
+            "created_at",
+            desc=True,
+        )
         .execute()
     )
 
     return {
-        "logistics": result.data,
+        "logistics": result.data
     }
 
 
@@ -128,9 +138,9 @@ def get_logistics(
 ):
     user_id = current_user["sub"]
 
-    # Get logistics record
     logistics_result = (
-        supabase.table("logistics")
+        supabase
+        .table("logistics")
         .select("*")
         .eq("id", logistics_id)
         .single()
@@ -145,12 +155,18 @@ def get_logistics(
 
     logistics = logistics_result.data
 
-    # Verify that the order belongs to the current buyer
     order_result = (
-        supabase.table("orders")
+        supabase
+        .table("orders")
         .select("id")
-        .eq("id", logistics["order_id"])
-        .eq("buyer_id", user_id)
+        .eq(
+            "id",
+            logistics["order_id"],
+        )
+        .eq(
+            "buyer_id",
+            user_id,
+        )
         .single()
         .execute()
     )
@@ -176,11 +192,41 @@ def update_logistics_status(
 ):
     user_id = current_user["sub"]
 
-    # Get logistics record
+    # --------------------------------------------------------
+    # VALID LOGISTICS STATUSES
+    # --------------------------------------------------------
+
+    allowed_statuses = [
+        "pending",
+        "picked_up",
+        "in_transit",
+        "delivered",
+        "cancelled",
+        "completed",
+    ]
+
+    if status not in allowed_statuses:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Invalid logistics status. "
+                "Allowed values: "
+                + ", ".join(allowed_statuses)
+            ),
+        )
+
+    # --------------------------------------------------------
+    # GET LOGISTICS
+    # --------------------------------------------------------
+
     logistics_result = (
-        supabase.table("logistics")
-        .select("order_id")
-        .eq("id", logistics_id)
+        supabase
+        .table("logistics")
+        .select("*")
+        .eq(
+            "id",
+            logistics_id,
+        )
         .single()
         .execute()
     )
@@ -191,14 +237,26 @@ def update_logistics_status(
             detail="Logistics record not found",
         )
 
-    order_id = logistics_result.data["order_id"]
+    logistics = logistics_result.data
 
-    # Verify ownership through the order
+    order_id = logistics["order_id"]
+
+    # --------------------------------------------------------
+    # CHECK ORDER OWNERSHIP
+    # --------------------------------------------------------
+
     order_result = (
-        supabase.table("orders")
-        .select("id")
-        .eq("id", order_id)
-        .eq("buyer_id", user_id)
+        supabase
+        .table("orders")
+        .select("*")
+        .eq(
+            "id",
+            order_id,
+        )
+        .eq(
+            "buyer_id",
+            user_id,
+        )
         .single()
         .execute()
     )
@@ -209,21 +267,103 @@ def update_logistics_status(
             detail="You are not allowed to update this logistics record",
         )
 
-    # Update status
-    result = (
-        supabase.table("logistics")
-        .update({"status": status})
-        .eq("id", logistics_id)
+    # --------------------------------------------------------
+    # UPDATE LOGISTICS
+    # --------------------------------------------------------
+
+    logistics_update = (
+        supabase
+        .table("logistics")
+        .update(
+            {
+                "status": status,
+            }
+        )
+        .eq(
+            "id",
+            logistics_id,
+        )
         .execute()
     )
 
-    if not result.data:
+    if not logistics_update.data:
         raise HTTPException(
             status_code=400,
             detail="Failed to update logistics status",
         )
 
+    # --------------------------------------------------------
+    # LOGISTICS → ORDER STATUS MAPPING
+    # --------------------------------------------------------
+    #
+    # Your orders table does NOT allow "shipped".
+    #
+    # Therefore:
+    #
+    # in_transit → processing
+    #
+    # --------------------------------------------------------
+
+    order_status_map = {
+        "pending": "pending",
+        "picked_up": "processing",
+        "in_transit": "processing",
+        "delivered": "delivered",
+        "cancelled": "cancelled",
+        "completed": "completed",
+    }
+
+    new_order_status = order_status_map[status]
+
+    # --------------------------------------------------------
+    # UPDATE ORDER
+    # --------------------------------------------------------
+
+    try:
+        order_update = (
+            supabase
+            .table("orders")
+            .update(
+                {
+                    "status": new_order_status,
+                }
+            )
+            .eq(
+                "id",
+                order_id,
+            )
+            .eq(
+                "buyer_id",
+                user_id,
+            )
+            .execute()
+        )
+
+    except Exception as error:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Logistics status was updated, "
+                "but order status could not be synchronized: "
+                f"{str(error)}"
+            ),
+        )
+
+    if not order_update.data:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Logistics status was updated, "
+                "but order status could not be synchronized"
+            ),
+        )
+
+    # --------------------------------------------------------
+    # FINAL RESPONSE
+    # --------------------------------------------------------
+
     return {
-        "message": "Logistics status updated successfully",
-        "logistics": result.data[0],
+        "message": "Logistics and order status updated successfully",
+        "logistics": logistics_update.data[0],
+        "order": order_update.data[0],
     }
