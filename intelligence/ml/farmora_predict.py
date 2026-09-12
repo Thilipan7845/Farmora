@@ -1,73 +1,132 @@
 import os
+import json
 import joblib
 import pandas as pd
 
 from decision_engine import decide_sale
-
+from profit_engine import calculate_profit
+from explanation_engine import generate_farmer_explanation
 
 MODEL_DIR = "intelligence/models"
 
 
+
+# ============================================================
 # Crop prediction horizons
+# ============================================================
+
 HORIZONS = {
+
     "cotton": 14,
+
     "rice": 14,
+
     "sugarcane": 2,
+
     "wheat": 14,
+
     "onion": 5,
+
     "tomato": 3
+
 }
 
+
+
+
+# ============================================================
+# Model Features
+# ============================================================
 
 FEATURES = [
 
     "Modal_Price",
+
     "Min_Price",
+
     "Max_Price",
+
     "Price_Range",
+
     "Modal_Position",
 
+
     "Year",
+
     "Month",
+
     "Week_Of_Year",
+
     "Day_Of_Week",
+
     "Quarter",
 
+
     "Lag_1",
+
     "Lag_2",
+
     "Lag_3",
+
     "Lag_5",
+
     "Lag_7",
+
     "Lag_14",
+
     "Lag_30",
 
+
     "Rolling_Mean_3",
+
     "Rolling_Mean_7",
+
     "Rolling_Mean_14",
+
     "Rolling_Mean_30",
 
+
     "Rolling_Std_7",
+
     "Rolling_Std_14",
 
+
     "Price_Change_1",
+
     "Price_Change_3",
+
     "Price_Change_7",
+
     "Price_Change_14",
 
+
     "Price_Change_Pct_1",
+
     "Price_Change_Pct_7",
+
     "Price_Change_Pct_14",
 
+
     "Market",
+
     "Variety",
+
     "Grade"
+
 ]
 
 
 
+
+
+# ============================================================
+# Load Crop Model
+# ============================================================
+
 def load_price_model(crop):
 
     crop = crop.lower()
+
 
     path = (
         f"{MODEL_DIR}/{crop}_price_model.joblib"
@@ -86,81 +145,333 @@ def load_price_model(crop):
 
 
 
+
+# ============================================================
+# Load Model Metrics
+# ============================================================
+
+def load_model_metrics(crop):
+
+    path = (
+        f"{MODEL_DIR}/{crop}_metrics.json"
+    )
+
+
+    if not os.path.exists(path):
+
+        raise Exception(
+            f"Metrics not found for {crop}"
+        )
+
+
+    with open(
+        path,
+        "r"
+    ) as file:
+
+        return json.load(file)
+
+
+
+
+
+
+# ============================================================
+# Main Farmora Intelligence Function
+# ============================================================
+
 def predict_market_decision(
+
         crop,
+
         input_data,
+
         storage_available,
+
         storage_cost,
+
         demand_level,
-        quantity
+
+        quantity,
+
+        transport_cost,
+
+        storage_expense
+
 ):
+
 
     crop = crop.lower()
 
 
-    # Load crop-specific model
+
+    # --------------------------------------------------------
+    # Load model
+    # --------------------------------------------------------
 
     model = load_price_model(crop)
 
 
 
-    # Convert input to dataframe
+    # --------------------------------------------------------
+    # Prepare input
+    # --------------------------------------------------------
 
     df = pd.DataFrame(
         [input_data]
     )
 
 
-    # Keep only required features
-
     df = df[FEATURES]
 
 
 
+    # --------------------------------------------------------
     # Predict future price
+    # --------------------------------------------------------
 
-    predicted_price = model.predict(df)[0]
+    predicted_price = float(
+
+        model.predict(df)[0]
+
+    )
 
 
 
-    current_price = input_data[
-        "Modal_Price"
+
+    # --------------------------------------------------------
+    # Price range + confidence
+    # --------------------------------------------------------
+
+    metrics = load_model_metrics(crop)
+
+
+
+    best_model = metrics[
+        "best_model"
     ]
 
 
 
-    # Decision engine
+    if best_model == "Linear Regression":
 
-    result = decide_sale(
+        model_metrics = metrics[
+            "linear_regression"
+        ]
 
-        crop=crop,
 
-        prediction_horizon_days=
-            HORIZONS[crop],
+    elif best_model == "Random Forest":
+
+        model_metrics = metrics[
+            "random_forest"
+        ]
+
+
+    else:
+
+        model_metrics = metrics[
+            "xgboost"
+        ]
+
+
+
+
+    mae = float(
+        model_metrics["MAE"]
+    )
+
+
+    r2 = float(
+        model_metrics["R2"]
+    )
+
+
+
+    lower_price = (
+
+        predicted_price - mae
+
+    )
+
+
+    upper_price = (
+
+        predicted_price + mae
+
+    )
+
+
+
+    confidence = (
+
+        r2 * 100
+
+    )
+
+
+
+
+
+    # --------------------------------------------------------
+    # Current Price
+    # --------------------------------------------------------
+
+    current_price = float(
+
+        input_data["Modal_Price"]
+
+    )
+
+
+
+
+
+    # --------------------------------------------------------
+    # Profit Calculation
+    # --------------------------------------------------------
+
+    profit_analysis = calculate_profit(
+
+        quantity=quantity,
 
         current_price=current_price,
 
         predicted_price=predicted_price,
 
+        transport_cost=transport_cost,
+
+        storage_cost=storage_expense
+
+    )
+
+
+
+
+
+    # --------------------------------------------------------
+    # Decision Engine
+    # --------------------------------------------------------
+
+    result = decide_sale(
+
+        crop=crop,
+
+
+        prediction_horizon_days=
+            HORIZONS[crop],
+
+
+        current_price=current_price,
+
+
+        predicted_price=predicted_price,
+
+
+        expected_price_range={
+
+            "lower":
+                lower_price,
+
+            "upper":
+                upper_price
+
+        },
+
+
         storage_available=storage_available,
+
 
         storage_cost=storage_cost,
 
+
         demand_level=demand_level,
 
-        quantity=quantity
+
+        quantity=quantity,
+
+
+        confidence_score=confidence,
+
+
+        profit_analysis=profit_analysis
+
     )
 
 
 
-    # Add prediction details
 
-    result["crop"] = crop
 
+    # --------------------------------------------------------
+    # Add ML Intelligence Output
+    # --------------------------------------------------------
 
     result["predicted_price"] = float(
-        round(predicted_price, 2)
+
+        round(
+            predicted_price,
+            2
+        )
+
     )
 
+
+
+    result["expected_price_range"] = {
+
+
+        "lower":
+
+            float(
+                round(
+                    lower_price,
+                    2
+                )
+            ),
+
+
+        "upper":
+
+            float(
+                round(
+                    upper_price,
+                    2
+                )
+            )
+
+    }
+
+
+
+    result["confidence_score"] = float(
+
+        round(
+            confidence,
+            2
+        )
+
+    )
+
+        # --------------------------------------------------------
+    # Farmer Explanation
+    # --------------------------------------------------------
+
+    explanation = generate_farmer_explanation(
+
+        recommendation=result["recommendation"],
+
+        reasons=result["reasons"],
+
+        profit_analysis=result["profit_analysis"],
+
+        quantity_strategy=result["quantity_strategy"],
+
+        crop=crop,
+
+        confidence_score=result["confidence_score"]
+
+    )
+
+
+    result["farmer_explanation"] = explanation
 
     return result
