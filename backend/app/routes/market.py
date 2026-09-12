@@ -2,14 +2,18 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.security import get_current_user
 from app.database.supabase_client import supabase
-from app.schemas.market import MarketPriceCreate, MarketArrivalCreate
+from app.schemas.market import (
+    MarketPriceCreate,
+    MarketArrivalCreate,
+)
+
 
 router = APIRouter()
 
 
-# ============================================================
+# ------------------------------------------------------------
 # MARKET PRICES
-# ============================================================
+# ------------------------------------------------------------
 
 @router.post("/prices")
 def create_market_price(
@@ -52,9 +56,9 @@ def get_market_prices(
     }
 
 
-# ============================================================
+# ------------------------------------------------------------
 # MARKET ARRIVALS
-# ============================================================
+# ------------------------------------------------------------
 
 @router.post("/arrivals")
 def create_market_arrival(

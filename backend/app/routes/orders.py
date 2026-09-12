@@ -4,11 +4,12 @@ from app.core.security import get_current_user
 from app.database.supabase_client import supabase
 from app.schemas.order import OrderCreate
 
+
 router = APIRouter()
 
 
 # ============================================================
-# CREATE ORDER
+# CREATE ORDER FROM ACCEPTED OFFER
 # ============================================================
 
 @router.post("")
@@ -18,9 +19,13 @@ def create_order(
 ):
     buyer_id = current_user["sub"]
 
-    # Make sure the buyer profile exists
+    # --------------------------------------------------------
+    # CHECK BUYER PROFILE
+    # --------------------------------------------------------
+
     buyer_result = (
-        supabase.table("buyers")
+        supabase
+        .table("buyers")
         .select("id")
         .eq("id", buyer_id)
         .single()
@@ -33,9 +38,13 @@ def create_order(
             detail="Buyer profile not found",
         )
 
-    # Get the offer
+    # --------------------------------------------------------
+    # GET OFFER
+    # --------------------------------------------------------
+
     offer_result = (
-        supabase.table("offers")
+        supabase
+        .table("offers")
         .select("*")
         .eq("id", order.offer_id)
         .single()
@@ -50,16 +59,33 @@ def create_order(
 
     offer = offer_result.data
 
-    # Make sure the current user owns the offer
+    # --------------------------------------------------------
+    # CHECK BUYER OWNS OFFER
+    # --------------------------------------------------------
+
     if offer["buyer_id"] != buyer_id:
         raise HTTPException(
             status_code=403,
             detail="You are not allowed to create an order from this offer",
         )
 
-    # Get the crop lot
+    # --------------------------------------------------------
+    # OFFER MUST BE ACCEPTED
+    # --------------------------------------------------------
+
+    if offer["status"] != "accepted":
+        raise HTTPException(
+            status_code=400,
+            detail="Order can only be created from an accepted offer",
+        )
+
+    # --------------------------------------------------------
+    # GET CROP LOT
+    # --------------------------------------------------------
+
     lot_result = (
-        supabase.table("crop_lots")
+        supabase
+        .table("crop_lots")
         .select("*")
         .eq("id", offer["crop_lot_id"])
         .single()
@@ -74,21 +100,74 @@ def create_order(
 
     crop_lot = lot_result.data
 
-    farmer_id = crop_lot["farmer_id"]
-    crop_lot_id = crop_lot["id"]
+    # --------------------------------------------------------
+    # CHECK CROP LOT
+    # --------------------------------------------------------
 
-    # Calculate total amount
-    total_amount = order.quantity * order.agreed_price
+    if crop_lot["availability"] != "reserved":
+        raise HTTPException(
+            status_code=400,
+            detail="Crop lot is not reserved for this accepted offer",
+        )
 
-    # Create the order
+    # --------------------------------------------------------
+    # CHECK QUANTITY
+    # --------------------------------------------------------
+
+    if order.quantity <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Order quantity must be greater than zero",
+        )
+
+    if order.quantity > float(
+        offer["quantity"]
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Order quantity cannot exceed accepted offer quantity",
+        )
+
+    if order.quantity > float(
+        crop_lot["quantity"]
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Order quantity exceeds crop lot quantity",
+        )
+
+    # --------------------------------------------------------
+    # AGREED PRICE
+    # --------------------------------------------------------
+
+    if order.agreed_price <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Agreed price must be greater than zero",
+        )
+
+    # --------------------------------------------------------
+    # CALCULATE TOTAL
+    # --------------------------------------------------------
+
+    total_amount = (
+        order.quantity
+        * order.agreed_price
+    )
+
+    # --------------------------------------------------------
+    # CREATE ORDER
+    # --------------------------------------------------------
+
     result = (
-        supabase.table("orders")
+        supabase
+        .table("orders")
         .insert(
             {
                 "offer_id": order.offer_id,
-                "farmer_id": farmer_id,
+                "farmer_id": crop_lot["farmer_id"],
                 "buyer_id": buyer_id,
-                "crop_lot_id": crop_lot_id,
+                "crop_lot_id": crop_lot["id"],
                 "quantity": order.quantity,
                 "agreed_price": order.agreed_price,
                 "total_amount": total_amount,
@@ -120,10 +199,14 @@ def get_my_orders(
     buyer_id = current_user["sub"]
 
     result = (
-        supabase.table("orders")
+        supabase
+        .table("orders")
         .select("*")
         .eq("buyer_id", buyer_id)
-        .order("created_at", desc=True)
+        .order(
+            "created_at",
+            desc=True,
+        )
         .execute()
     )
 
@@ -145,7 +228,8 @@ def get_order(
     buyer_id = current_user["sub"]
 
     result = (
-        supabase.table("orders")
+        supabase
+        .table("orders")
         .select("*")
         .eq("id", order_id)
         .eq("buyer_id", buyer_id)
@@ -174,9 +258,34 @@ def update_order_status(
 ):
     buyer_id = current_user["sub"]
 
+    allowed_statuses = [
+        "pending",
+        "confirmed",
+        "processing",
+        "shipped",
+        "delivered",
+        "completed",
+        "cancelled",
+    ]
+
+    if status not in allowed_statuses:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Invalid order status. "
+                "Allowed values: "
+                + ", ".join(allowed_statuses)
+            ),
+        )
+
     result = (
-        supabase.table("orders")
-        .update({"status": status})
+        supabase
+        .table("orders")
+        .update(
+            {
+                "status": status,
+            }
+        )
         .eq("id", order_id)
         .eq("buyer_id", buyer_id)
         .execute()
