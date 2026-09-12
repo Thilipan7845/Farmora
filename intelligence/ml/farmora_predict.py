@@ -6,6 +6,8 @@ import pandas as pd
 from decision_engine import decide_sale
 from profit_engine import calculate_profit
 from explanation_engine import generate_farmer_explanation
+from feature_builder import build_features
+
 
 MODEL_DIR = "intelligence/models"
 
@@ -18,19 +20,13 @@ MODEL_DIR = "intelligence/models"
 HORIZONS = {
 
     "cotton": 14,
-
     "rice": 14,
-
     "sugarcane": 2,
-
     "wheat": 14,
-
     "onion": 5,
-
     "tomato": 3
 
 }
-
 
 
 
@@ -41,81 +37,47 @@ HORIZONS = {
 FEATURES = [
 
     "Modal_Price",
-
     "Min_Price",
-
     "Max_Price",
-
     "Price_Range",
-
     "Modal_Position",
 
-
     "Year",
-
     "Month",
-
     "Week_Of_Year",
-
     "Day_Of_Week",
-
     "Quarter",
 
-
     "Lag_1",
-
     "Lag_2",
-
     "Lag_3",
-
     "Lag_5",
-
     "Lag_7",
-
     "Lag_14",
-
     "Lag_30",
 
-
     "Rolling_Mean_3",
-
     "Rolling_Mean_7",
-
     "Rolling_Mean_14",
-
     "Rolling_Mean_30",
 
-
     "Rolling_Std_7",
-
     "Rolling_Std_14",
 
-
     "Price_Change_1",
-
     "Price_Change_3",
-
     "Price_Change_7",
-
     "Price_Change_14",
 
-
     "Price_Change_Pct_1",
-
     "Price_Change_Pct_7",
-
     "Price_Change_Pct_14",
 
-
     "Market",
-
     "Variety",
-
     "Grade"
 
 ]
-
-
 
 
 
@@ -126,7 +88,6 @@ FEATURES = [
 def load_price_model(crop):
 
     crop = crop.lower()
-
 
     path = (
         f"{MODEL_DIR}/{crop}_price_model.joblib"
@@ -141,7 +102,6 @@ def load_price_model(crop):
 
 
     return joblib.load(path)
-
 
 
 
@@ -175,9 +135,8 @@ def load_model_metrics(crop):
 
 
 
-
 # ============================================================
-# Main Farmora Intelligence Function
+# MAIN INTELLIGENCE FUNCTION
 # ============================================================
 
 def predict_market_decision(
@@ -214,7 +173,7 @@ def predict_market_decision(
 
 
     # --------------------------------------------------------
-    # Prepare input
+    # Prepare ML input
     # --------------------------------------------------------
 
     df = pd.DataFrame(
@@ -227,7 +186,7 @@ def predict_market_decision(
 
 
     # --------------------------------------------------------
-    # Predict future price
+    # Predict price
     # --------------------------------------------------------
 
     predicted_price = float(
@@ -238,41 +197,30 @@ def predict_market_decision(
 
 
 
-
     # --------------------------------------------------------
-    # Price range + confidence
+    # Confidence + price range
     # --------------------------------------------------------
 
     metrics = load_model_metrics(crop)
 
 
-
-    best_model = metrics[
-        "best_model"
-    ]
+    best_model = metrics["best_model"]
 
 
 
     if best_model == "Linear Regression":
 
-        model_metrics = metrics[
-            "linear_regression"
-        ]
+        model_metrics = metrics["linear_regression"]
 
 
     elif best_model == "Random Forest":
 
-        model_metrics = metrics[
-            "random_forest"
-        ]
+        model_metrics = metrics["random_forest"]
 
 
     else:
 
-        model_metrics = metrics[
-            "xgboost"
-        ]
-
+        model_metrics = metrics["xgboost"]
 
 
 
@@ -310,10 +258,8 @@ def predict_market_decision(
 
 
 
-
-
     # --------------------------------------------------------
-    # Current Price
+    # Current price
     # --------------------------------------------------------
 
     current_price = float(
@@ -324,10 +270,8 @@ def predict_market_decision(
 
 
 
-
-
     # --------------------------------------------------------
-    # Profit Calculation
+    # Profit Engine
     # --------------------------------------------------------
 
     profit_analysis = calculate_profit(
@@ -346,8 +290,6 @@ def predict_market_decision(
 
 
 
-
-
     # --------------------------------------------------------
     # Decision Engine
     # --------------------------------------------------------
@@ -356,42 +298,29 @@ def predict_market_decision(
 
         crop=crop,
 
-
-        prediction_horizon_days=
-            HORIZONS[crop],
-
+        prediction_horizon_days=HORIZONS[crop],
 
         current_price=current_price,
 
-
         predicted_price=predicted_price,
-
 
         expected_price_range={
 
-            "lower":
-                lower_price,
+            "lower": lower_price,
 
-            "upper":
-                upper_price
+            "upper": upper_price
 
         },
 
-
         storage_available=storage_available,
-
 
         storage_cost=storage_cost,
 
-
         demand_level=demand_level,
-
 
         quantity=quantity,
 
-
         confidence_score=confidence,
-
 
         profit_analysis=profit_analysis
 
@@ -399,59 +328,33 @@ def predict_market_decision(
 
 
 
-
-
     # --------------------------------------------------------
-    # Add ML Intelligence Output
+    # Add Intelligence Outputs
     # --------------------------------------------------------
 
-    result["predicted_price"] = float(
-
-        round(
-            predicted_price,
-            2
-        )
-
+    result["predicted_price"] = round(
+        predicted_price,
+        2
     )
-
 
 
     result["expected_price_range"] = {
 
+        "lower": round(lower_price,2),
 
-        "lower":
-
-            float(
-                round(
-                    lower_price,
-                    2
-                )
-            ),
-
-
-        "upper":
-
-            float(
-                round(
-                    upper_price,
-                    2
-                )
-            )
+        "upper": round(upper_price,2)
 
     }
 
 
-
-    result["confidence_score"] = float(
-
-        round(
-            confidence,
-            2
-        )
-
+    result["confidence_score"] = round(
+        confidence,
+        2
     )
 
-        # --------------------------------------------------------
+
+
+    # --------------------------------------------------------
     # Farmer Explanation
     # --------------------------------------------------------
 
@@ -473,5 +376,82 @@ def predict_market_decision(
 
 
     result["farmer_explanation"] = explanation
+
+
+
+    return result
+
+
+
+
+
+# ============================================================
+# LIVE BACKEND WRAPPER
+# ============================================================
+
+def predict_from_market_history(
+
+        crop,
+
+        market,
+
+        variety,
+
+        grade,
+
+        history,
+
+        storage_available,
+
+        storage_cost,
+
+        demand_level,
+
+        quantity,
+
+        transport_cost,
+
+        storage_expense
+
+):
+
+
+    # Generate ML features
+    input_data = build_features(
+
+        crop=crop,
+
+        market=market,
+
+        variety=variety,
+
+        grade=grade,
+
+        history=history
+
+    )
+
+
+    # Run existing intelligence pipeline
+    result = predict_market_decision(
+
+        crop=crop,
+
+        input_data=input_data,
+
+        storage_available=storage_available,
+
+        storage_cost=storage_cost,
+
+        demand_level=demand_level,
+
+        quantity=quantity,
+
+        transport_cost=transport_cost,
+
+        storage_expense=storage_expense
+
+    )
+
 
     return result
