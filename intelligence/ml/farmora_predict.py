@@ -2,15 +2,30 @@ import os
 import json
 import joblib
 import pandas as pd
+from pathlib import Path
 
-from decision_engine import decide_sale
-from profit_engine import calculate_profit
-from explanation_engine import generate_farmer_explanation
-from feature_builder import build_features
+from intelligence.ml.decision_engine import decide_sale
+from intelligence.ml.profit_engine import calculate_profit
+from intelligence.ml.explanation_engine import generate_farmer_explanation
+from intelligence.ml.feature_builder import build_features
 
 
-MODEL_DIR = "intelligence/models"
+# ============================================================
+# Intelligence Project Paths
+# ============================================================
 
+# farmora_predict.py:
+# F:\Farmora\intelligence\ml\farmora_predict.py
+#
+# parents[0] -> F:\Farmora\intelligence\ml
+# parents[1] -> F:\Farmora\intelligence
+#
+# Therefore the models directory is:
+# F:\Farmora\intelligence\models
+
+INTELLIGENCE_ROOT = Path(__file__).resolve().parents[1]
+
+MODEL_DIR = INTELLIGENCE_ROOT / "models"
 
 
 # ============================================================
@@ -18,16 +33,13 @@ MODEL_DIR = "intelligence/models"
 # ============================================================
 
 HORIZONS = {
-
     "cotton": 14,
     "rice": 14,
     "sugarcane": 2,
     "wheat": 14,
     "onion": 5,
     "tomato": 3
-
 }
-
 
 
 # ============================================================
@@ -80,30 +92,24 @@ FEATURES = [
 ]
 
 
-
 # ============================================================
 # Load Crop Model
 # ============================================================
 
 def load_price_model(crop):
 
-    crop = crop.lower()
+    crop = crop.lower().strip()
 
-    path = (
-        f"{MODEL_DIR}/{crop}_price_model.joblib"
-    )
+    model_path = MODEL_DIR / f"{crop}_price_model.joblib"
 
-
-    if not os.path.exists(path):
+    if not model_path.exists():
 
         raise Exception(
-            f"Model not found for {crop}"
+            f"Model not found for {crop}. "
+            f"Expected model at: {model_path}"
         )
 
-
-    return joblib.load(path)
-
-
+    return joblib.load(model_path)
 
 
 # ============================================================
@@ -112,27 +118,24 @@ def load_price_model(crop):
 
 def load_model_metrics(crop):
 
-    path = (
-        f"{MODEL_DIR}/{crop}_metrics.json"
-    )
+    crop = crop.lower().strip()
 
+    metrics_path = MODEL_DIR / f"{crop}_metrics.json"
 
-    if not os.path.exists(path):
+    if not metrics_path.exists():
 
         raise Exception(
-            f"Metrics not found for {crop}"
+            f"Metrics not found for {crop}. "
+            f"Expected metrics at: {metrics_path}"
         )
 
-
     with open(
-        path,
-        "r"
+        metrics_path,
+        "r",
+        encoding="utf-8"
     ) as file:
 
         return json.load(file)
-
-
-
 
 
 # ============================================================
@@ -141,36 +144,41 @@ def load_model_metrics(crop):
 
 def predict_market_decision(
 
-        crop,
+    crop,
 
-        input_data,
+    input_data,
 
-        storage_available,
+    storage_available,
 
-        storage_cost,
+    storage_cost,
 
-        demand_level,
+    demand_level,
 
-        quantity,
+    quantity,
 
-        transport_cost,
+    transport_cost,
 
-        storage_expense
+    storage_expense
 
 ):
 
+    crop = crop.lower().strip()
 
-    crop = crop.lower()
+    # --------------------------------------------------------
+    # Validate crop
+    # --------------------------------------------------------
 
+    if crop not in HORIZONS:
 
+        raise Exception(
+            f"Unsupported crop: {crop}"
+        )
 
     # --------------------------------------------------------
     # Load model
     # --------------------------------------------------------
 
     model = load_price_model(crop)
-
-
 
     # --------------------------------------------------------
     # Prepare ML input
@@ -180,22 +188,30 @@ def predict_market_decision(
         [input_data]
     )
 
+    # Ensure all expected features exist
+    missing_features = [
+        feature
+        for feature in FEATURES
+        if feature not in df.columns
+    ]
 
+    if missing_features:
+
+        raise Exception(
+            "Missing ML features: "
+            + ", ".join(missing_features)
+        )
+
+    # Keep features in the exact trained-model order
     df = df[FEATURES]
-
-
 
     # --------------------------------------------------------
     # Predict price
     # --------------------------------------------------------
 
     predicted_price = float(
-
         model.predict(df)[0]
-
     )
-
-
 
     # --------------------------------------------------------
     # Confidence + price range
@@ -203,72 +219,53 @@ def predict_market_decision(
 
     metrics = load_model_metrics(crop)
 
-
     best_model = metrics["best_model"]
-
-
 
     if best_model == "Linear Regression":
 
         model_metrics = metrics["linear_regression"]
 
-
     elif best_model == "Random Forest":
 
         model_metrics = metrics["random_forest"]
-
 
     else:
 
         model_metrics = metrics["xgboost"]
 
-
-
     mae = float(
         model_metrics["MAE"]
     )
-
 
     r2 = float(
         model_metrics["R2"]
     )
 
-
-
     lower_price = (
-
         predicted_price - mae
-
     )
-
 
     upper_price = (
-
         predicted_price + mae
-
     )
-
-
 
     confidence = (
-
         r2 * 100
-
     )
 
-
+    # Keep confidence within a sensible range
+    confidence = max(
+        0.0,
+        min(100.0, confidence)
+    )
 
     # --------------------------------------------------------
     # Current price
     # --------------------------------------------------------
 
     current_price = float(
-
         input_data["Modal_Price"]
-
     )
-
-
 
     # --------------------------------------------------------
     # Profit Engine
@@ -287,8 +284,6 @@ def predict_market_decision(
         storage_cost=storage_expense
 
     )
-
-
 
     # --------------------------------------------------------
     # Decision Engine
@@ -326,33 +321,42 @@ def predict_market_decision(
 
     )
 
-
-
     # --------------------------------------------------------
     # Add Intelligence Outputs
     # --------------------------------------------------------
+
+    result["crop"] = crop
+
+    result["current_price"] = round(
+        current_price,
+        2
+    )
 
     result["predicted_price"] = round(
         predicted_price,
         2
     )
 
-
     result["expected_price_range"] = {
 
-        "lower": round(lower_price,2),
+        "lower": round(
+            lower_price,
+            2
+        ),
 
-        "upper": round(upper_price,2)
+        "upper": round(
+            upper_price,
+            2
+        )
 
     }
-
 
     result["confidence_score"] = round(
         confidence,
         2
     )
 
-
+    result["prediction_horizon_days"] = HORIZONS[crop]
 
     # --------------------------------------------------------
     # Farmer Explanation
@@ -374,15 +378,9 @@ def predict_market_decision(
 
     )
 
-
     result["farmer_explanation"] = explanation
 
-
-
     return result
-
-
-
 
 
 # ============================================================
@@ -391,32 +389,44 @@ def predict_market_decision(
 
 def predict_from_market_history(
 
-        crop,
+    crop,
 
-        market,
+    market,
 
-        variety,
+    variety,
 
-        grade,
+    grade,
 
-        history,
+    history,
 
-        storage_available,
+    storage_available,
 
-        storage_cost,
+    storage_cost,
 
-        demand_level,
+    demand_level,
 
-        quantity,
+    quantity,
 
-        transport_cost,
+    transport_cost,
 
-        storage_expense
+    storage_expense
 
 ):
 
+    # --------------------------------------------------------
+    # Validate historical data
+    # --------------------------------------------------------
 
-    # Generate ML features
+    if not history:
+
+        raise Exception(
+            "No historical market data provided."
+        )
+
+    # --------------------------------------------------------
+    # Generate the 33 ML features
+    # --------------------------------------------------------
+
     input_data = build_features(
 
         crop=crop,
@@ -431,8 +441,10 @@ def predict_from_market_history(
 
     )
 
+    # --------------------------------------------------------
+    # Run existing Intelligence pipeline
+    # --------------------------------------------------------
 
-    # Run existing intelligence pipeline
     result = predict_market_decision(
 
         crop=crop,
@@ -452,6 +464,5 @@ def predict_from_market_history(
         storage_expense=storage_expense
 
     )
-
 
     return result
