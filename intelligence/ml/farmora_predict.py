@@ -8,6 +8,11 @@ from intelligence.ml.decision_engine import decide_sale
 from intelligence.ml.profit_engine import calculate_profit
 from intelligence.ml.explanation_engine import generate_farmer_explanation
 from intelligence.ml.feature_builder import build_features
+from decision_engine import decide_sale
+from profit_engine import calculate_profit
+from explanation_engine import generate_farmer_explanation
+from feature_builder import build_features
+
 
 
 # ============================================================
@@ -40,6 +45,7 @@ HORIZONS = {
     "onion": 5,
     "tomato": 3
 }
+
 
 
 # ============================================================
@@ -92,6 +98,7 @@ FEATURES = [
 ]
 
 
+
 # ============================================================
 # Load Crop Model
 # ============================================================
@@ -99,6 +106,11 @@ FEATURES = [
 def load_price_model(crop):
 
     crop = crop.lower().strip()
+    crop = crop.lower()
+
+    path = (
+        f"{MODEL_DIR}/{crop}_price_model.joblib"
+    )
 
     model_path = MODEL_DIR / f"{crop}_price_model.joblib"
 
@@ -110,7 +122,6 @@ def load_price_model(crop):
         )
 
     return joblib.load(model_path)
-
 
 # ============================================================
 # Load Model Metrics
@@ -136,6 +147,9 @@ def load_model_metrics(crop):
     ) as file:
 
         return json.load(file)
+
+
+
 
 
 # ============================================================
@@ -213,6 +227,8 @@ def predict_market_decision(
         model.predict(df)[0]
     )
 
+
+
     # --------------------------------------------------------
     # Confidence + price range
     # --------------------------------------------------------
@@ -229,9 +245,12 @@ def predict_market_decision(
 
         model_metrics = metrics["random_forest"]
 
+
     else:
 
         model_metrics = metrics["xgboost"]
+
+
 
     mae = float(
         model_metrics["MAE"]
@@ -267,6 +286,8 @@ def predict_market_decision(
         input_data["Modal_Price"]
     )
 
+
+
     # --------------------------------------------------------
     # Profit Engine
     # --------------------------------------------------------
@@ -284,6 +305,8 @@ def predict_market_decision(
         storage_cost=storage_expense
 
     )
+
+
 
     # --------------------------------------------------------
     # Decision Engine
@@ -464,5 +487,83 @@ def predict_from_market_history(
         storage_expense=storage_expense
 
     )
+
+    return result
+
+
+    return result
+
+
+
+
+
+# ============================================================
+# LIVE BACKEND WRAPPER
+# ============================================================
+
+def predict_from_market_history(
+
+        crop,
+
+        market,
+
+        variety,
+
+        grade,
+
+        history,
+
+        storage_available,
+
+        storage_cost,
+
+        demand_level,
+
+        quantity,
+
+        transport_cost,
+
+        storage_expense
+
+):
+
+
+    # Generate ML features
+    input_data = build_features(
+
+        crop=crop,
+
+        market=market,
+
+        variety=variety,
+
+        grade=grade,
+
+        history=history
+
+    )
+
+
+    # Run existing intelligence pipeline
+    result = predict_market_decision(
+
+        crop=crop,
+
+        input_data=input_data,
+
+        storage_available=storage_available,
+
+        storage_cost=storage_cost,
+
+        demand_level=demand_level,
+
+        quantity=quantity,
+
+        transport_cost=transport_cost,
+
+        storage_expense=storage_expense
+
+    )
+
 
     return result
