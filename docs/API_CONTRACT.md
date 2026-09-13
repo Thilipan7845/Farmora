@@ -2524,3 +2524,381 @@ Response:
 ```
 
 ---
+
+---
+
+# 11. Flutter ↔ Backend Integration Flow
+
+This section explains how the Flutter application communicates with Farmora Backend.
+
+---
+
+# Authentication Flow
+
+```
+Flutter App
+     |
+     ↓
+Supabase Authentication
+     |
+     ↓
+Access Token Generated
+     |
+     ↓
+Store Token Securely
+     |
+     ↓
+Send Token With Every API Request
+     |
+     ↓
+FastAPI Authentication Middleware
+     |
+     ↓
+API Access Granted
+```
+
+Every protected API request must include:
+
+```http
+Authorization: Bearer <SUPABASE_ACCESS_TOKEN>
+```
+
+---
+
+# Farmer Application Flow
+
+## 1. Farmer Registration
+
+Flutter Screen:
+
+```
+Farmer Registration
+```
+
+API:
+
+```
+POST /api/auth
+POST /api/farmers/profile
+```
+
+Flow:
+
+```
+Create Account
+      ↓
+Create Farmer Profile
+      ↓
+Dashboard Access
+```
+
+---
+
+## 2. Create Crop Listing
+
+Flutter Screen:
+
+```
+Add Crop Lot
+```
+
+API:
+
+```
+POST /api/crop-lots
+```
+
+Flow:
+
+```
+Farmer enters crop details
+      ↓
+Backend validates data
+      ↓
+Crop lot stored in database
+      ↓
+Available for buyers
+```
+
+---
+
+## 3. AI Market Intelligence
+
+Flutter Screen:
+
+```
+Market Intelligence
+```
+
+API:
+
+```
+POST /api/intelligence/decision
+```
+
+Flow:
+
+```
+Farmer selects crop
+      ↓
+Backend fetches market history
+      ↓
+ML prediction generated
+      ↓
+Decision returned
+      ↓
+Flutter displays recommendation
+```
+
+Example UI:
+
+```
+Current Price:
+₹8800
+
+Predicted Price:
+₹8221
+
+Trend:
+FALLING
+
+Recommendation:
+SELL NOW
+
+Confidence:
+74%
+```
+
+---
+
+## 4. Buyer Matching
+
+Flutter Screen:
+
+```
+Find Buyers
+```
+
+API:
+
+```
+POST /api/buyer-matching
+```
+
+Flow:
+
+```
+Farmer selects crop lot
+      ↓
+Matching engine searches buyers
+      ↓
+Match score calculated
+      ↓
+Buyer cards displayed
+```
+
+---
+
+## 5. Offer Management
+
+Flow:
+
+```
+Buyer creates offer
+        |
+        ↓
+Farmer receives offer
+        |
+        ↓
+Accept / Reject / Negotiate
+```
+
+APIs:
+
+Create Offer:
+
+```
+POST /api/offers
+```
+
+Update Status:
+
+```
+PUT /api/offers/{offer_id}/status
+```
+
+---
+
+## 6. Order Processing
+
+Flow:
+
+```
+Accepted Offer
+       ↓
+Create Order
+       ↓
+Track Order Status
+```
+
+API:
+
+```
+POST /api/orders
+```
+
+---
+
+## 7. Logistics Tracking
+
+Flow:
+
+```
+Order Confirmed
+       ↓
+Create Logistics
+       ↓
+Delivery Tracking
+```
+
+APIs:
+
+Create:
+
+```
+POST /api/logistics
+```
+
+Update:
+
+```
+PUT /api/logistics/{logistics_id}/status
+```
+
+---
+
+## 8. Payment Flow
+
+Flow:
+
+```
+Order Completed
+       ↓
+Payment Created
+       ↓
+Payment Status Updated
+```
+
+APIs:
+
+```
+POST /api/payments
+
+PUT /api/payments/{payment_id}/status
+```
+
+---
+
+# 12. Complete Farmora User Journey
+
+## Farmer Journey
+
+```
+Register
+   |
+   ↓
+Create Profile
+   |
+   ↓
+Add Crop Lot
+   |
+   ↓
+View Market Intelligence
+   |
+   ↓
+Find Matching Buyers
+   |
+   ↓
+Receive Offers
+   |
+   ↓
+Negotiate
+   |
+   ↓
+Accept Offer
+   |
+   ↓
+Order Created
+   |
+   ↓
+Track Logistics
+   |
+   ↓
+Receive Payment
+```
+
+---
+
+## Buyer Journey
+
+```
+Register
+   |
+   ↓
+Create Buyer Profile
+   |
+   ↓
+Add Crop Requirement
+   |
+   ↓
+Find Available Crops
+   |
+   ↓
+Send Offer
+   |
+   ↓
+Negotiate With Farmer
+   |
+   ↓
+Confirm Order
+   |
+   ↓
+Arrange Logistics
+   |
+   ↓
+Complete Payment
+```
+
+---
+
+# Backend Integration Rules
+
+## Frontend Team Must:
+
+1. Always send authentication token.
+
+2. Follow request JSON formats.
+
+3. Handle all error responses.
+
+4. Do not directly access Supabase database.
+
+5. Use FastAPI endpoints only.
+
+---
+
+# API Documentation Source
+
+Backend API documentation is available through FastAPI Swagger:
+
+```
+http://127.0.0.1:8000/docs
+```
+
+OpenAPI specification:
+
+```
+http://127.0.0.1:8000/openapi.json
+```
+
+---
