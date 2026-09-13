@@ -9,7 +9,7 @@ class IntelligenceDecisionRequest(BaseModel):
     grade: Optional[str] = None
 
     storage_available: bool
-    storage_cost: str
+    storage_cost: float
 
     demand_level: str
 
