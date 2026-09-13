@@ -1,4 +1,4 @@
-from crop_profile import get_crop_profile
+from .crop_profile import get_crop_profile
 
 
 
