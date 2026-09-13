@@ -2,7 +2,10 @@ import sys
 from pathlib import Path
 
 
-# Add Farmora project root to Python path
+# ============================================================
+# Add Farmora root
+# ============================================================
+
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 if str(PROJECT_ROOT) not in sys.path:
@@ -21,6 +24,10 @@ from app.database.supabase_client import supabase
 
 
 
+# ============================================================
+# Fetch Market History
+# ============================================================
+
 def get_market_history(
     crop: str,
     market: str,
@@ -28,29 +35,38 @@ def get_market_history(
     grade: str | None = None,
 ):
 
-    """
-    Fetch raw market history from Supabase.
 
-    Intelligence team expects:
+    # --------------------------------------------------------
+    # Normalize only for comparison
+    # --------------------------------------------------------
 
-    [
-        {
-            Arrival_Date,
-            Min_Price,
-            Max_Price,
-            Modal_Price
-        }
-    ]
+    crop_search = crop.strip().lower()
 
-    """
+    market_search = market.strip().lower()
+
+
+    variety_search = (
+        variety.strip().lower()
+        if variety
+        else None
+    )
+
+
+    grade_search = (
+        grade.strip().lower()
+        if grade
+        else None
+    )
+
+
+    # --------------------------------------------------------
+    # Fetch all rows
+    # --------------------------------------------------------
 
     result = (
         supabase
         .table("market_prices")
         .select("*")
-        .eq("crop_name", crop)
-        .eq("market_name", market)
-        .order("price_date", desc=False)
         .execute()
     )
 
@@ -58,54 +74,123 @@ def get_market_history(
     rows = result.data
 
 
-    if not rows:
-        raise ValueError(
-            "No market history available."
-        )
+    print("\n==============================")
+    print("MARKET SEARCH")
+    print("==============================")
+
+    print("Crop:", crop_search)
+    print("Market:", market_search)
+    print("Variety:", variety_search)
+    print("Grade:", grade_search)
+
+    print("Total DB rows:", len(rows))
 
 
-    history = []
+    # --------------------------------------------------------
+    # Filter manually (case insensitive)
+    # --------------------------------------------------------
+
+    filtered_rows = []
 
 
     for row in rows:
 
 
-        if variety is not None:
+        if (
+            row["crop_name"]
+            .strip()
+            .lower()
+            != crop_search
+        ):
+            continue
 
-            if row.get("variety") != variety:
+
+        if (
+            row["market_name"]
+            .strip()
+            .lower()
+            != market_search
+        ):
+            continue
+
+
+
+        if variety_search:
+
+            if (
+                row.get("variety","")
+                .strip()
+                .lower()
+                != variety_search
+            ):
                 continue
 
 
-        if grade is not None:
 
-            if row.get("grade") != grade:
+        if grade_search:
+
+            if (
+                row.get("grade","")
+                .strip()
+                .lower()
+                != grade_search
+            ):
                 continue
 
 
 
-        history.append(
-            {
-                "Arrival_Date": row["price_date"],
+        filtered_rows.append(row)
 
-                "Min_Price": float(
-                    row["min_price"]
-                ),
 
-                "Max_Price": float(
-                    row["max_price"]
-                ),
 
-                "Modal_Price": float(
-                    row["modal_price"]
-                )
-            }
+    print(
+        "Matching rows:",
+        len(filtered_rows)
+    )
+
+    print("==============================\n")
+
+
+
+    if not filtered_rows:
+
+        raise ValueError(
+            "No market history available."
         )
 
 
-    if len(history) == 0:
 
-        raise ValueError(
-            "No matching market history found."
+    # --------------------------------------------------------
+    # Convert to Intelligence format
+    # --------------------------------------------------------
+
+    history = []
+
+
+    for row in filtered_rows:
+
+
+        history.append(
+
+            {
+
+                "Arrival_Date":
+                    row["price_date"],
+
+
+                "Min_Price":
+                    float(row["min_price"]),
+
+
+                "Max_Price":
+                    float(row["max_price"]),
+
+
+                "Modal_Price":
+                    float(row["modal_price"])
+
+            }
+
         )
 
 
@@ -115,14 +200,14 @@ def get_market_history(
 
 
 
+# ============================================================
+# Main Decision Function
+# ============================================================
+
 def get_market_decision(
     request: IntelligenceDecisionRequest
 ):
 
-
-    # --------------------------------------------------
-    # GET RAW MARKET HISTORY
-    # --------------------------------------------------
 
     history = get_market_history(
 
@@ -138,25 +223,18 @@ def get_market_decision(
 
 
 
-    # --------------------------------------------------
-    # CHECK HISTORY
-    # Intelligence requires minimum 30 records
-    # --------------------------------------------------
-
     if len(history) < 30:
 
 
         return {
+
 
             "status":
             "insufficient_market_history",
 
 
             "message":
-            (
-                "Minimum 30 historical "
-                "market records required."
-            ),
+            "Minimum 30 historical market records required.",
 
 
             "crop":
@@ -177,10 +255,6 @@ def get_market_decision(
         }
 
 
-
-    # --------------------------------------------------
-    # CALL INTELLIGENCE V1
-    # --------------------------------------------------
 
     result = predict_from_market_history(
 
@@ -219,7 +293,6 @@ def get_market_decision(
         request.storage_expense
 
     )
-
 
 
     return result
