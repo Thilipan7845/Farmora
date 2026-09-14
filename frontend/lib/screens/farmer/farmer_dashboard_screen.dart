@@ -1,6 +1,17 @@
 import 'package:flutter/material.dart';
 
 import '../../core/localization/app_localizations.dart';
+import '../../services/crop_service.dart';
+import '../../services/dashboard_service.dart';
+import '../../services/order_service.dart';
+
+import 'add_crop_lot_screen.dart';
+import 'intelligence_screen.dart';
+import 'buyer_matching_screen.dart';
+import 'offers_screen.dart';
+import 'orders_screen.dart';
+import 'logistics_screen.dart';
+import 'payment_screen.dart';
 
 class FarmerDashboardScreen extends StatefulWidget {
   const FarmerDashboardScreen({super.key});
@@ -14,6 +25,109 @@ class _FarmerDashboardScreenState
     extends State<FarmerDashboardScreen> {
   int _selectedIndex = 0;
 
+  List<dynamic> cropLots = [];
+  Map<String, dynamic> dashboardStats = {};
+  List<dynamic> farmerOrders = [];
+
+  bool loadingCrops = true;
+  bool loadingStats = true;
+  bool loadingOrders = true;
+
+  @override
+  void initState() {
+    super.initState();
+
+    loadCropLots();
+    loadDashboardStats();
+    loadFarmerOrders();
+  }
+
+  // ============================================================
+  // LOAD CROP LOTS
+  // ============================================================
+
+  Future<void> loadCropLots() async {
+    try {
+      final data = await CropService.getCropLots();
+
+      if (!mounted) return;
+
+      setState(() {
+        cropLots = data;
+        loadingCrops = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        loadingCrops = false;
+      });
+    }
+  }
+
+  // ============================================================
+  // LOAD DASHBOARD STATS
+  // ============================================================
+
+  Future<void> loadDashboardStats() async {
+    try {
+      final data = await DashboardService.getStats();
+
+      if (!mounted) return;
+
+      setState(() {
+        dashboardStats = data;
+        loadingStats = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        loadingStats = false;
+      });
+    }
+  }
+
+  // ============================================================
+  // LOAD FARMER ORDERS
+  // ============================================================
+
+  Future<void> loadFarmerOrders() async {
+    try {
+      final data = await OrderService.getOrders();
+
+      if (!mounted) return;
+
+      setState(() {
+        farmerOrders = data;
+        loadingOrders = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        farmerOrders = [];
+        loadingOrders = false;
+      });
+    }
+  }
+
+  // ============================================================
+  // REFRESH EVERYTHING
+  // ============================================================
+
+  Future<void> refreshDashboard() async {
+    await Future.wait([
+      loadCropLots(),
+      loadDashboardStats(),
+      loadFarmerOrders(),
+    ]);
+  }
+
+  // ============================================================
+  // LANGUAGE
+  // ============================================================
+
   String get languageCode {
     return Localizations.localeOf(context).languageCode;
   }
@@ -26,12 +140,18 @@ class _FarmerDashboardScreenState
     switch (languageCode) {
       case 'ta':
         return ta;
+
       case 'mr':
         return mr;
+
       default:
         return en;
     }
   }
+
+  // ============================================================
+  // BUILD
+  // ============================================================
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +166,7 @@ class _FarmerDashboardScreenState
           _buildHome(local),
           _buildCropsPage(local),
           _buildMarketPage(local),
-          _buildOrdersPage(local),
+          const OrdersScreen(),
           _buildProfilePage(local),
         ],
       ),
@@ -82,7 +202,9 @@ class _FarmerDashboardScreenState
               size: 25,
             ),
           ),
+
           const SizedBox(width: 11),
+
           Expanded(
             child: Text(
               local.farmerDashboard,
@@ -93,12 +215,15 @@ class _FarmerDashboardScreenState
               ),
             ),
           ),
+
           _iconButton(
             icon: Icons.notifications_none_rounded,
             onPressed: _showNotifications,
             badge: '3',
           ),
+
           const SizedBox(width: 4),
+
           _iconButton(
             icon: Icons.person_outline_rounded,
             onPressed: () {
@@ -127,6 +252,7 @@ class _FarmerDashboardScreenState
             color: const Color(0xFF344034),
           ),
         ),
+
         if (badge != null)
           Positioned(
             right: 4,
@@ -165,14 +291,15 @@ class _FarmerDashboardScreenState
   Widget _buildHome(AppLocalizations local) {
     return SafeArea(
       child: RefreshIndicator(
-        onRefresh: () async {
-          await Future.delayed(
-            const Duration(milliseconds: 600),
-          );
-        },
+        onRefresh: refreshDashboard,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(18, 10, 18, 30),
+          padding: const EdgeInsets.fromLTRB(
+            18,
+            10,
+            18,
+            30,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -262,6 +389,10 @@ class _FarmerDashboardScreenState
     );
   }
 
+  // ============================================================
+  // GREETING
+  // ============================================================
+
   Widget _buildGreeting(AppLocalizations local) {
     return Container(
       width: double.infinity,
@@ -292,7 +423,9 @@ class _FarmerDashboardScreenState
                     color: Color(0xFF17351B),
                   ),
                 ),
+
                 const SizedBox(height: 7),
+
                 Text(
                   getText(
                     en:
@@ -308,7 +441,9 @@ class _FarmerDashboardScreenState
                     color: Colors.grey.shade700,
                   ),
                 ),
+
                 const SizedBox(height: 14),
+
                 Row(
                   children: [
                     const Icon(
@@ -316,7 +451,9 @@ class _FarmerDashboardScreenState
                       size: 16,
                       color: Color(0xFF2E7D32),
                     ),
+
                     const SizedBox(width: 4),
+
                     Text(
                       getText(
                         en: 'Your Farm Location',
@@ -334,12 +471,16 @@ class _FarmerDashboardScreenState
               ],
             ),
           ),
+
           const SizedBox(width: 10),
+
           Container(
             width: 68,
             height: 68,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.75),
+              color: Colors.white.withValues(
+                alpha: 0.75,
+              ),
               shape: BoxShape.circle,
             ),
             child: const Icon(
@@ -358,47 +499,72 @@ class _FarmerDashboardScreenState
   // ============================================================
 
   Widget _buildQuickStats() {
+    if (loadingStats) {
+      return const SizedBox(
+        height: 110,
+        child: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     return Row(
       children: [
         Expanded(
           child: _statCard(
             icon: Icons.inventory_2_outlined,
-            value: '5',
+            value:
+                dashboardStats["crop_count"]?.toString() ??
+                    "0",
             label: getText(
               en: 'Crop Lots',
               ta: 'பயிர் தொகுப்புகள்',
               mr: 'पिकांचे लॉट',
             ),
-            iconBackground: const Color(0xFFE8F5E9),
-            iconColor: const Color(0xFF2E7D32),
+            iconBackground:
+                const Color(0xFFE8F5E9),
+            iconColor:
+                const Color(0xFF2E7D32),
           ),
         ),
+
         const SizedBox(width: 10),
+
         Expanded(
           child: _statCard(
             icon: Icons.local_offer_outlined,
-            value: '2',
+            value:
+                dashboardStats["offer_count"]?.toString() ??
+                    "0",
             label: getText(
               en: 'Offers',
               ta: 'சலுகைகள்',
               mr: 'ऑफर्स',
             ),
-            iconBackground: const Color(0xFFFFF3E0),
-            iconColor: const Color(0xFFE67E22),
+            iconBackground:
+                const Color(0xFFFFF3E0),
+            iconColor:
+                const Color(0xFFE67E22),
           ),
         ),
+
         const SizedBox(width: 10),
+
         Expanded(
           child: _statCard(
             icon: Icons.shopping_bag_outlined,
-            value: '1',
+            value:
+                dashboardStats["order_count"]?.toString() ??
+                    "0",
             label: getText(
               en: 'Orders',
               ta: 'ஆர்டர்கள்',
               mr: 'ऑर्डर्स',
             ),
-            iconBackground: const Color(0xFFE3F2FD),
-            iconColor: const Color(0xFF1976D2),
+            iconBackground:
+                const Color(0xFFE3F2FD),
+            iconColor:
+                const Color(0xFF1976D2),
           ),
         ),
       ],
@@ -413,7 +579,12 @@ class _FarmerDashboardScreenState
     required Color iconColor,
   }) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(11, 13, 8, 13),
+      padding: const EdgeInsets.fromLTRB(
+        11,
+        13,
+        8,
+        13,
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(17),
@@ -422,14 +593,16 @@ class _FarmerDashboardScreenState
         ),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
         children: [
           Container(
             width: 35,
             height: 35,
             decoration: BoxDecoration(
               color: iconBackground,
-              borderRadius: BorderRadius.circular(11),
+              borderRadius:
+                  BorderRadius.circular(11),
             ),
             child: Icon(
               icon,
@@ -437,7 +610,9 @@ class _FarmerDashboardScreenState
               color: iconColor,
             ),
           ),
+
           const SizedBox(height: 9),
+
           Text(
             value,
             style: const TextStyle(
@@ -445,7 +620,9 @@ class _FarmerDashboardScreenState
               fontWeight: FontWeight.bold,
             ),
           ),
+
           const SizedBox(height: 2),
+
           Text(
             label,
             maxLines: 1,
@@ -465,6 +642,17 @@ class _FarmerDashboardScreenState
   // ============================================================
 
   Widget _buildAiInsight() {
+    final hasCrop = cropLots.isNotEmpty;
+
+    final cropName = hasCrop
+        ? cropLots[0]["crop_name"]?.toString() ??
+            "Crop"
+        : getText(
+            en: 'No crop selected',
+            ta: 'பயிர் தேர்ந்தெடுக்கப்படவில்லை',
+            mr: 'पीक निवडलेले नाही',
+          );
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
@@ -480,9 +668,8 @@ class _FarmerDashboardScreenState
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF2E7D32).withValues(
-              alpha: 0.18,
-            ),
+            color: const Color(0xFF2E7D32)
+                .withValues(alpha: 0.18),
             blurRadius: 16,
             offset: const Offset(0, 7),
           ),
@@ -501,7 +688,8 @@ class _FarmerDashboardScreenState
                   color: Colors.white.withValues(
                     alpha: 0.16,
                   ),
-                  borderRadius: BorderRadius.circular(13),
+                  borderRadius:
+                      BorderRadius.circular(13),
                 ),
                 child: const Icon(
                   Icons.auto_awesome_rounded,
@@ -509,7 +697,9 @@ class _FarmerDashboardScreenState
                   size: 22,
                 ),
               ),
+
               const SizedBox(width: 11),
+
               Expanded(
                 child: Text(
                   getText(
@@ -524,8 +714,10 @@ class _FarmerDashboardScreenState
                   ),
                 ),
               ),
+
               Container(
-                padding: const EdgeInsets.symmetric(
+                padding:
+                    const EdgeInsets.symmetric(
                   horizontal: 9,
                   vertical: 5,
                 ),
@@ -533,7 +725,8 @@ class _FarmerDashboardScreenState
                   color: Colors.white.withValues(
                     alpha: 0.14,
                   ),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius:
+                      BorderRadius.circular(20),
                 ),
                 child: Text(
                   getText(
@@ -554,11 +747,7 @@ class _FarmerDashboardScreenState
           const SizedBox(height: 17),
 
           Text(
-            getText(
-              en: 'Cotton',
-              ta: 'பருத்தி',
-              mr: 'कापूस',
-            ),
+            cropName,
             style: TextStyle(
               color: Colors.white.withValues(
                 alpha: 0.8,
@@ -567,60 +756,48 @@ class _FarmerDashboardScreenState
             ),
           ),
 
-          const SizedBox(height: 5),
+          const SizedBox(height: 7),
 
-          Row(
-            crossAxisAlignment:
-                CrossAxisAlignment.end,
-            children: [
-              const Text(
-                '₹7,200',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text(
-                  getText(
-                    en: 'Current',
-                    ta: 'தற்போதைய',
-                    mr: 'सध्याची',
-                  ),
-                  style: TextStyle(
-                    color: Colors.white.withValues(
-                      alpha: 0.75,
-                    ),
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ],
+          Text(
+            getText(
+              en: 'AI-powered market decision support',
+              ta: 'AI அடிப்படையிலான சந்தை முடிவு உதவி',
+              mr: 'AI आधारित बाजार निर्णय सहाय्य',
+            ),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
           ),
 
-          const SizedBox(height: 5),
+          const SizedBox(height: 8),
 
           Row(
             children: [
               const Icon(
-                Icons.trending_up_rounded,
+                Icons.auto_graph_rounded,
                 color: Color(0xFFB9F6CA),
                 size: 19,
               ),
-              const SizedBox(width: 4),
-              Text(
-                getText(
-                  en: 'Predicted ₹7,450 • Rising',
-                  ta: 'கணிப்பு ₹7,450 • உயர்வு',
-                  mr: 'अंदाज ₹7,450 • वाढ',
-                ),
-                style: const TextStyle(
-                  color: Color(0xFFB9F6CA),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
+
+              const SizedBox(width: 5),
+
+              Expanded(
+                child: Text(
+                  getText(
+                    en:
+                        'Get live price prediction, trend and selling recommendation.',
+                    ta:
+                        'நேரடி விலை கணிப்பு, போக்கு மற்றும் விற்பனை பரிந்துரையைப் பெறுங்கள்.',
+                    mr:
+                        'थेट किंमत अंदाज, ट्रेंड आणि विक्री शिफारस मिळवा.',
+                  ),
+                  style: const TextStyle(
+                    color: Color(0xFFB9F6CA),
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
@@ -635,25 +812,28 @@ class _FarmerDashboardScreenState
               color: Colors.white.withValues(
                 alpha: 0.10,
               ),
-              borderRadius: BorderRadius.circular(15),
+              borderRadius:
+                  BorderRadius.circular(15),
             ),
             child: Row(
               children: [
                 const Icon(
-                  Icons.schedule_rounded,
+                  Icons.psychology_outlined,
                   color: Colors.white,
                   size: 21,
                 ),
+
                 const SizedBox(width: 10),
+
                 Expanded(
                   child: Text(
                     getText(
                       en:
-                          'Recommendation: WAIT for a better price',
+                          'Open Market Intelligence to get a recommendation for your crop.',
                       ta:
-                          'பரிந்துரை: நல்ல விலைக்காக காத்திருக்கவும்',
+                          'உங்கள் பயிருக்கான பரிந்துரையைப் பெற சந்தை நுண்ணறிவைத் திறக்கவும்.',
                       mr:
-                          'शिफारस: चांगल्या किमतीसाठी थांबा',
+                          'तुमच्या पिकासाठी शिफारस मिळवण्यासाठी बाजार माहिती उघडा.',
                     ),
                     style: const TextStyle(
                       color: Colors.white,
@@ -673,9 +853,44 @@ class _FarmerDashboardScreenState
             height: 44,
             child: OutlinedButton(
               onPressed: () {
-                setState(() {
-                  _selectedIndex = 2;
-                });
+                if (cropLots.isEmpty) {
+                  ScaffoldMessenger.of(context)
+                      .showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        getText(
+                          en:
+                              'Please add a crop lot first.',
+                          ta:
+                              'முதலில் ஒரு பயிர் தொகுப்பைச் சேர்க்கவும்.',
+                          mr:
+                              'कृपया प्रथम पीक लॉट जोडा.',
+                        ),
+                      ),
+                    ),
+                  );
+
+                  return;
+                }
+
+                final crop = cropLots[0];
+
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        IntelligenceScreen(
+                      crop:
+                          crop["crop_name"] ??
+                              "Crop",
+                      quantity: double.tryParse(
+                            crop["quantity"]
+                                    .toString(),
+                          ) ??
+                          0,
+                    ),
+                  ),
+                );
               },
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.white,
@@ -684,8 +899,10 @@ class _FarmerDashboardScreenState
                     alpha: 0.5,
                   ),
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(13),
+                shape:
+                    RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius.circular(13),
                 ),
               ),
               child: Text(
@@ -703,7 +920,7 @@ class _FarmerDashboardScreenState
   }
 
   // ============================================================
-  // MY CROPS
+  // CROP PREVIEW
   // ============================================================
 
   Widget _buildCropPreview() {
@@ -718,40 +935,48 @@ class _FarmerDashboardScreenState
       ),
       child: Column(
         children: [
-          _cropRow(
-            icon: Icons.grass_rounded,
-            crop: getText(
-              en: 'Cotton',
-              ta: 'பருத்தி',
-              mr: 'कापूस',
+          if (loadingCrops)
+            const Padding(
+              padding: EdgeInsets.all(12),
+              child: CircularProgressIndicator(),
+            )
+          else if (cropLots.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Text(
+                getText(
+                  en: 'No crop lots added',
+                  ta: 'பயிர் தொகுப்பு இல்லை',
+                  mr: 'पीक लॉट उपलब्ध नाही',
+                ),
+              ),
+            )
+          else
+            ...cropLots.map(
+              (crop) {
+                return Padding(
+                  padding:
+                      const EdgeInsets.only(
+                    bottom: 10,
+                  ),
+                  child: _cropRow(
+                    icon: Icons.grass_rounded,
+                    crop:
+                        crop["crop_name"] ??
+                            "Crop",
+                    quantity:
+                        "${crop["quantity"] ?? 0} kg",
+                    status: getText(
+                      en: "Available",
+                      ta: "கிடைக்கிறது",
+                      mr: "उपलब्ध",
+                    ),
+                    statusColor:
+                        const Color(0xFF2E7D32),
+                  ),
+                );
+              },
             ),
-            quantity: '500 kg',
-            status: getText(
-              en: 'Available',
-              ta: 'கிடைக்கிறது',
-              mr: 'उपलब्ध',
-            ),
-            statusColor: const Color(0xFF2E7D32),
-          ),
-          Divider(
-            height: 20,
-            color: Colors.grey.shade200,
-          ),
-          _cropRow(
-            icon: Icons.circle,
-            crop: getText(
-              en: 'Tomato',
-              ta: 'தக்காளி',
-              mr: 'टोमॅटो',
-            ),
-            quantity: '300 kg',
-            status: getText(
-              en: '2 Offers',
-              ta: '2 சலுகைகள்',
-              mr: '2 ऑफर्स',
-            ),
-            statusColor: const Color(0xFFE67E22),
-          ),
         ],
       ),
     );
@@ -771,14 +996,17 @@ class _FarmerDashboardScreenState
           height: 43,
           decoration: BoxDecoration(
             color: const Color(0xFFE8F5E9),
-            borderRadius: BorderRadius.circular(13),
+            borderRadius:
+                BorderRadius.circular(13),
           ),
           child: Icon(
             icon,
             color: const Color(0xFF2E7D32),
           ),
         ),
+
         const SizedBox(width: 12),
+
         Expanded(
           child: Column(
             crossAxisAlignment:
@@ -791,7 +1019,9 @@ class _FarmerDashboardScreenState
                   fontSize: 15,
                 ),
               ),
+
               const SizedBox(height: 3),
+
               Text(
                 quantity,
                 style: TextStyle(
@@ -802,8 +1032,10 @@ class _FarmerDashboardScreenState
             ],
           ),
         ),
+
         Container(
-          padding: const EdgeInsets.symmetric(
+          padding:
+              const EdgeInsets.symmetric(
             horizontal: 9,
             vertical: 6,
           ),
@@ -811,7 +1043,8 @@ class _FarmerDashboardScreenState
             color: statusColor.withValues(
               alpha: 0.10,
             ),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius:
+                BorderRadius.circular(20),
           ),
           child: Text(
             status,
@@ -835,50 +1068,58 @@ class _FarmerDashboardScreenState
       children: [
         _marketRow(
           crop: getText(
-            en: 'Cotton',
-            ta: 'பருத்தி',
-            mr: 'कापूस',
+            en: 'Market Data',
+            ta: 'சந்தை தரவு',
+            mr: 'बाजार डेटा',
           ),
-          price: '₹7,200',
+          price: getText(
+            en: 'Live',
+            ta: 'நேரடி',
+            mr: 'थेट',
+          ),
           trend: getText(
-            en: 'Rising',
-            ta: 'உயர்வு',
-            mr: 'वाढ',
+            en: 'AI',
+            ta: 'AI',
+            mr: 'AI',
           ),
-          icon: Icons.trending_up_rounded,
+          icon: Icons.insights_rounded,
           iconColor: const Color(0xFF2E7D32),
         ),
+
         const SizedBox(height: 9),
+
         _marketRow(
           crop: getText(
-            en: 'Tomato',
-            ta: 'தக்காளி',
-            mr: 'टोमॅटो',
+            en: 'Price Prediction',
+            ta: 'விலை கணிப்பு',
+            mr: 'किंमत अंदाज',
           ),
-          price: '₹2,800',
-          trend: getText(
-            en: 'Stable',
-            ta: 'நிலையானது',
-            mr: 'स्थिर',
+          price: getText(
+            en: 'Available',
+            ta: 'கிடைக்கும்',
+            mr: 'उपलब्ध',
           ),
-          icon: Icons.trending_flat_rounded,
-          iconColor: const Color(0xFFF9A825),
+          trend: 'AI',
+          icon: Icons.auto_graph_rounded,
+          iconColor: const Color(0xFF1976D2),
         ),
+
         const SizedBox(height: 9),
+
         _marketRow(
           crop: getText(
-            en: 'Onion',
-            ta: 'வெங்காயம்',
-            mr: 'कांदा',
+            en: 'Selling Decision',
+            ta: 'விற்பனை முடிவு',
+            mr: 'विक्री निर्णय',
           ),
-          price: '₹3,100',
-          trend: getText(
-            en: 'Falling',
-            ta: 'சரிவு',
-            mr: 'घसरण',
+          price: getText(
+            en: 'Personalized',
+            ta: 'தனிப்பயன்',
+            mr: 'वैयक्तिक',
           ),
-          icon: Icons.trending_down_rounded,
-          iconColor: const Color(0xFFD32F2F),
+          trend: 'AI',
+          icon: Icons.psychology_outlined,
+          iconColor: const Color(0xFFE67E22),
         ),
       ],
     );
@@ -909,14 +1150,17 @@ class _FarmerDashboardScreenState
               color: iconColor.withValues(
                 alpha: 0.10,
               ),
-              borderRadius: BorderRadius.circular(13),
+              borderRadius:
+                  BorderRadius.circular(13),
             ),
             child: Icon(
               icon,
               color: iconColor,
             ),
           ),
+
           const SizedBox(width: 12),
+
           Expanded(
             child: Text(
               crop,
@@ -926,14 +1170,17 @@ class _FarmerDashboardScreenState
               ),
             ),
           ),
+
           Text(
             price,
             style: const TextStyle(
-              fontSize: 15,
+              fontSize: 13,
               fontWeight: FontWeight.bold,
             ),
           ),
+
           const SizedBox(width: 10),
+
           Text(
             trend,
             style: TextStyle(
@@ -975,11 +1222,33 @@ class _FarmerDashboardScreenState
         mr: 'खरेदीदार शोधा',
       ),
       onPressed: () {
-        _showComingSoon(
-          getText(
-            en: 'Buyer matching will be connected to the backend.',
-            ta: 'வாங்குபவர் matching backend-ல் இணைக்கப்படும்.',
-            mr: 'खरेदीदार matching backend शी जोडले जाईल.',
+        if (cropLots.isEmpty) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(
+            SnackBar(
+              content: Text(
+                getText(
+                  en: 'Add a crop lot first.',
+                  ta: 'முதலில் பயிர் தொகுப்பைச் சேர்க்கவும்.',
+                  mr: 'प्रथम पीक लॉट जोडा.',
+                ),
+              ),
+            ),
+          );
+
+          return;
+        }
+
+        final crop = cropLots[0];
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                BuyerMatchingScreen(
+              cropLotId: crop["id"].toString(),
+              cropName: crop["crop_name"]?.toString() ?? "Crop",
+            ),
           ),
         );
       },
@@ -991,6 +1260,9 @@ class _FarmerDashboardScreenState
   // ============================================================
 
   Widget _buildOffersCard() {
+    final offerCount =
+        dashboardStats["offer_count"] ?? 0;
+
     return _featureCard(
       icon: Icons.local_offer_outlined,
       iconColor: const Color(0xFFE65100),
@@ -1002,11 +1274,11 @@ class _FarmerDashboardScreenState
       ),
       subtitle: getText(
         en:
-            'You have 2 active buyer offers. Compare or negotiate before accepting.',
+            'You have $offerCount active buyer offers. Compare or negotiate before accepting.',
         ta:
-            'உங்களிடம் 2 வாங்குபவர் சலுகைகள் உள்ளன. ஏற்கும் முன் ஒப்பிட்டு பேச்சுவார்த்தை நடத்துங்கள்.',
+            'உங்களிடம் $offerCount வாங்குபவர் சலுகைகள் உள்ளன. ஏற்கும் முன் ஒப்பிட்டு பேச்சுவார்த்தை நடத்துங்கள்.',
         mr:
-            'तुमच्याकडे 2 सक्रिय खरेदीदार ऑफर्स आहेत. स्वीकारण्यापूर्वी तुलना किंवा वाटाघाटी करा.',
+            'तुमच्याकडे $offerCount सक्रिय खरेदीदार ऑफर्स आहेत. स्वीकारण्यापूर्वी तुलना किंवा वाटाघाटी करा.',
       ),
       buttonText: getText(
         en: 'View Offers',
@@ -1014,11 +1286,11 @@ class _FarmerDashboardScreenState
         mr: 'ऑफर्स पहा',
       ),
       onPressed: () {
-        _showComingSoon(
-          getText(
-            en: 'Offers screen will be connected to the backend.',
-            ta: 'சலுகைகள் screen backend-ல் இணைக்கப்படும்.',
-            mr: 'ऑफर्स स्क्रीन backend शी जोडली जाईल.',
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                const OffersScreen(),
           ),
         );
       },
@@ -1026,23 +1298,130 @@ class _FarmerDashboardScreenState
   }
 
   // ============================================================
-  // DELIVERY / OSM READY
+  // DELIVERY
   // ============================================================
 
   Widget _buildDeliveryCard() {
+    Map<String, dynamic>? activeOrder;
+
+    for (final item in farmerOrders) {
+      if (item is Map<String, dynamic>) {
+        final status = item["status"]?.toString().toLowerCase();
+
+        if (status != "cancelled") {
+          activeOrder = item;
+          break;
+        }
+      }
+    }
+
+    if (loadingOrders) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(17),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(21),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: const SizedBox(
+          height: 100,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
+    if (activeOrder == null) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(17),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(21),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 43,
+                  height: 43,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE3F2FD),
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                  child: const Icon(
+                    Icons.local_shipping_outlined,
+                    color: Color(0xFF1976D2),
+                  ),
+                ),
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Text(
+                    getText(
+                      en: 'Delivery Tracking',
+                      ta: 'டெலிவரி கண்காணிப்பு',
+                      mr: 'डिलिव्हरी ट्रॅकिंग',
+                    ),
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 15),
+            Text(
+              getText(
+                en: 'No active orders available for delivery tracking.',
+                ta: 'டெலிவரி கண்காணிப்புக்கு செயலில் உள்ள ஆர்டர்கள் இல்லை.',
+                mr: 'डिलिव्हरी ट्रॅकिंगसाठी सक्रिय ऑर्डर उपलब्ध नाहीत.',
+              ),
+              style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              height: 44,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _selectedIndex = 3;
+                  });
+                },
+                icon: const Icon(Icons.receipt_long_outlined, size: 19),
+                label: Text(
+                  getText(
+                    en: 'View My Orders',
+                    ta: 'என் ஆர்டர்களைப் பார்க்கவும்',
+                    mr: 'माझे ऑर्डर्स पहा',
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final orderId = activeOrder["id"]?.toString();
+    final orderStatus = activeOrder["status"]?.toString() ?? "pending";
+    final quantity = activeOrder["quantity"]?.toString() ?? "0";
+    final totalAmount = activeOrder["total_amount"];
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(21),
-        border: Border.all(
-          color: Colors.grey.shade200,
-        ),
+        border: Border.all(color: Colors.grey.shade200),
       ),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
@@ -1073,20 +1452,13 @@ class _FarmerDashboardScreenState
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 9,
-                  vertical: 5,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                 decoration: BoxDecoration(
                   color: const Color(0xFFE3F2FD),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  getText(
-                    en: 'In Transit',
-                    ta: 'வழியில்',
-                    mr: 'मार्गावर',
-                  ),
+                  _formatDeliveryStatus(orderStatus),
                   style: const TextStyle(
                     color: Color(0xFF1976D2),
                     fontSize: 10,
@@ -1096,53 +1468,60 @@ class _FarmerDashboardScreenState
               ),
             ],
           ),
-
           const SizedBox(height: 16),
-
-          Text(
-            getText(
-              en: 'Order #FM1024 • Cotton • 500 kg',
-              ta: 'ஆர்டர் #FM1024 • பருத்தி • 500 கிலோ',
-              mr: 'ऑर्डर #FM1024 • कापूस • 500 किलो',
-            ),
-            style: TextStyle(
-              color: Colors.grey.shade700,
-              fontSize: 13,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: _deliveryInfo(
+                  getText(en: 'Order', ta: 'ஆர்டர்', mr: 'ऑर्डर'),
+                  orderId == null
+                      ? '--'
+                      : '#${orderId.length > 8 ? orderId.substring(0, 8) : orderId}',
+                ),
+              ),
+              Expanded(
+                child: _deliveryInfo(
+                  getText(en: 'Quantity', ta: 'அளவு', mr: 'प्रमाण'),
+                  '$quantity kg',
+                ),
+              ),
+            ],
           ),
-
-          const SizedBox(height: 15),
-
-          _deliveryTimeline(),
-
-          const SizedBox(height: 14),
-
+          const SizedBox(height: 12),
+          if (totalAmount != null)
+            _deliveryInfo(
+              getText(en: 'Order Value', ta: 'ஆர்டர் மதிப்பு', mr: 'ऑर्डर मूल्य'),
+              '₹${totalAmount.toString()}',
+            ),
+          const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             height: 44,
             child: ElevatedButton.icon(
-              onPressed: () {
-                _showMapMessage();
-              },
-              icon: const Icon(
-                Icons.map_outlined,
-                size: 19,
-              ),
+              onPressed: orderId == null
+                  ? null
+                  : () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => LogisticsScreen(orderId: orderId),
+                        ),
+                      );
+                    },
+              icon: const Icon(Icons.map_outlined, size: 19),
               label: Text(
                 getText(
-                  en: 'Track on Map',
-                  ta: 'வரைபடத்தில் கண்காணிக்கவும்',
-                  mr: 'नकाशावर ट्रॅक करा',
+                  en: 'Track Delivery',
+                  ta: 'டெலிவரியை கண்காணிக்கவும்',
+                  mr: 'डिलिव्हरी ट्रॅक करा',
                 ),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    const Color(0xFF1976D2),
+                backgroundColor: const Color(0xFF1976D2),
                 foregroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius:
-                      BorderRadius.circular(13),
+                  borderRadius: BorderRadius.circular(13),
                 ),
               ),
             ),
@@ -1152,96 +1531,41 @@ class _FarmerDashboardScreenState
     );
   }
 
-  Widget _deliveryTimeline() {
-    final steps = [
-      getText(
-        en: 'Order Confirmed',
-        ta: 'ஆர்டர் உறுதி செய்யப்பட்டது',
-        mr: 'ऑर्डर निश्चित',
-      ),
-      getText(
-        en: 'Pickup Scheduled',
-        ta: 'Pickup திட்டமிடப்பட்டது',
-        mr: 'Pickup नियोजित',
-      ),
-      getText(
-        en: 'Crop Picked Up',
-        ta: 'பயிர் எடுத்துச் செல்லப்பட்டது',
-        mr: 'पीक उचलले',
-      ),
-      getText(
-        en: 'In Transit',
-        ta: 'வழியில் உள்ளது',
-        mr: 'मार्गावर',
-      ),
-      getText(
-        en: 'Delivered',
-        ta: 'வழங்கப்பட்டது',
-        mr: 'वितरित',
-      ),
-    ];
+  String _formatDeliveryStatus(String status) {
+    if (status.isEmpty) return "Pending";
 
+    return status
+        .split("_")
+        .map(
+          (word) => word.isEmpty
+              ? ""
+              : word[0].toUpperCase() + word.substring(1),
+        )
+        .join(" ");
+  }
+
+  Widget _deliveryInfo(String title, String value) {
     return Column(
-      children: List.generate(
-        steps.length,
-        (index) {
-          final completed = index <= 3;
-          final current = index == 3;
-
-          return Row(
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
-            children: [
-              Column(
-                children: [
-                  Container(
-                    width: 17,
-                    height: 17,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: completed
-                          ? const Color(0xFF1976D2)
-                          : Colors.grey.shade300,
-                    ),
-                    child: completed
-                        ? const Icon(
-                            Icons.check,
-                            size: 11,
-                            color: Colors.white,
-                          )
-                        : null,
-                  ),
-                  if (index < steps.length - 1)
-                    Container(
-                      width: 2,
-                      height: 18,
-                      color: completed
-                          ? const Color(0xFF90CAF9)
-                          : Colors.grey.shade300,
-                    ),
-                ],
-              ),
-              const SizedBox(width: 10),
-              Padding(
-                padding:
-                    const EdgeInsets.only(top: 0),
-                child: Text(
-                  steps[index],
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: current
-                        ? FontWeight.bold
-                        : FontWeight.w500,
-                    color: current
-                        ? const Color(0xFF1976D2)
-                        : Colors.grey.shade700,
-                  ),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            color: Colors.grey.shade600,
+            fontSize: 11,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
     );
   }
 
@@ -1268,13 +1592,15 @@ class _FarmerDashboardScreenState
                 color: Colors.white,
                 size: 25,
               ),
+
               const SizedBox(width: 10),
+
               Expanded(
                 child: Text(
                   getText(
-                    en: 'Expected Net Realisation',
-                    ta: 'எதிர்பார்க்கப்படும் நிகர வருவாய்',
-                    mr: 'अपेक्षित निव्वळ प्राप्ती',
+                    en: 'Payments',
+                    ta: 'கொடுப்பனவுகள்',
+                    mr: 'पेमेंट्स',
                   ),
                   style: const TextStyle(
                     color: Colors.white,
@@ -1288,94 +1614,58 @@ class _FarmerDashboardScreenState
 
           const SizedBox(height: 14),
 
-          const Text(
-            '₹34,200',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 29,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-
-          const SizedBox(height: 5),
-
           Text(
             getText(
               en:
-                  'After estimated transport, storage and other costs',
+                  'View your sales, received amount and pending payments.',
               ta:
-                  'போக்குவரத்து, சேமிப்பு மற்றும் பிற செலவுகளுக்குப் பிறகு',
+                  'உங்கள் விற்பனை, பெறப்பட்ட தொகை மற்றும் நிலுவைத் தொகையைப் பார்க்கவும்.',
               mr:
-                  'वाहतूक, साठवणूक आणि इतर खर्चानंतर',
+                  'तुमची विक्री, मिळालेली रक्कम आणि प्रलंबित पेमेंट पहा.',
             ),
             style: TextStyle(
               color: Colors.white.withValues(
-                alpha: 0.65,
+                alpha: 0.70,
               ),
-              fontSize: 11.5,
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          Row(
-            children: [
-              _costItem(
-                getText(
-                  en: 'Sale',
-                  ta: 'விற்பனை',
-                  mr: 'विक्री',
-                ),
-                '₹37,000',
-              ),
-              _costItem(
-                getText(
-                  en: 'Transport',
-                  ta: 'போக்குவரத்து',
-                  mr: 'वाहतूक',
-                ),
-                '-₹2,000',
-              ),
-              _costItem(
-                getText(
-                  en: 'Storage',
-                  ta: 'சேமிப்பு',
-                  mr: 'साठवणूक',
-                ),
-                '-₹500',
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _costItem(
-    String title,
-    String value,
-  ) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              color: Colors.white.withValues(
-                alpha: 0.55,
-              ),
-              fontSize: 10,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
               fontSize: 12,
-              fontWeight: FontWeight.w600,
+            ),
+          ),
+
+          const SizedBox(height: 18),
+
+          SizedBox(
+            width: double.infinity,
+            height: 45,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        const PaymentScreen(),
+                  ),
+                );
+              },
+              icon: const Icon(
+                Icons.account_balance_wallet,
+              ),
+              label: Text(
+                getText(
+                  en: 'View Payments',
+                  ta: 'கொடுப்பனவுகளைப் பார்க்கவும்',
+                  mr: 'पेमेंट्स पहा',
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor:
+                    const Color(0xFF263238),
+                shape:
+                    RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius.circular(13),
+                ),
+              ),
             ),
           ),
         ],
@@ -1403,7 +1693,9 @@ class _FarmerDashboardScreenState
             fontWeight: FontWeight.bold,
           ),
         ),
+
         const SizedBox(height: 12),
+
         Row(
           children: [
             Expanded(
@@ -1414,11 +1706,27 @@ class _FarmerDashboardScreenState
                   ta: 'பயிர் சேர்க்க',
                   mr: 'पीक जोडा',
                 ),
-                color: const Color(0xFF2E7D32),
-                onTap: _showAddCropMessage,
+                color:
+                    const Color(0xFF2E7D32),
+                onTap: () async {
+                  final result =
+                      await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          const AddCropLotScreen(),
+                    ),
+                  );
+
+                  if (result == true) {
+                    await refreshDashboard();
+                  }
+                },
               ),
             ),
+
             const SizedBox(width: 10),
+
             Expanded(
               child: _quickAction(
                 icon: Icons.local_offer_outlined,
@@ -1427,19 +1735,22 @@ class _FarmerDashboardScreenState
                   ta: 'சலுகைகள்',
                   mr: 'ऑफर्स',
                 ),
-                color: const Color(0xFFE67E22),
+                color:
+                    const Color(0xFFE67E22),
                 onTap: () {
-                  _showComingSoon(
-                    getText(
-                      en: 'Offers screen is ready for backend integration.',
-                      ta: 'சலுகைகள் screen backend integration-க்கு தயாராக உள்ளது.',
-                      mr: 'ऑफर्स स्क्रीन backend integration साठी तयार आहे.',
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          const OffersScreen(),
                     ),
                   );
                 },
               ),
             ),
+
             const SizedBox(width: 10),
+
             Expanded(
               child: _quickAction(
                 icon: Icons.help_outline,
@@ -1448,13 +1759,17 @@ class _FarmerDashboardScreenState
                   ta: 'உதவி',
                   mr: 'मदत',
                 ),
-                color: const Color(0xFF1976D2),
+                color:
+                    const Color(0xFF1976D2),
                 onTap: () {
                   _showComingSoon(
                     getText(
-                      en: 'Support will be connected to the backend.',
-                      ta: 'உதவி backend-ல் இணைக்கப்படும்.',
-                      mr: 'मदत backend शी जोडली जाईल.',
+                      en:
+                          'Support will be connected to the backend.',
+                      ta:
+                          'உதவி backend-ல் இணைக்கப்படும்.',
+                      mr:
+                          'मदत backend शी जोडली जाईल.',
                     ),
                   );
                 },
@@ -1476,13 +1791,15 @@ class _FarmerDashboardScreenState
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.symmetric(
+        padding:
+            const EdgeInsets.symmetric(
           vertical: 15,
           horizontal: 8,
         ),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius:
+              BorderRadius.circular(16),
           border: Border.all(
             color: Colors.grey.shade200,
           ),
@@ -1494,7 +1811,9 @@ class _FarmerDashboardScreenState
               color: color,
               size: 25,
             ),
+
             const SizedBox(height: 7),
+
             Text(
               label,
               maxLines: 1,
@@ -1514,7 +1833,9 @@ class _FarmerDashboardScreenState
   // CROPS PAGE
   // ============================================================
 
-  Widget _buildCropsPage(AppLocalizations local) {
+  Widget _buildCropsPage(
+    AppLocalizations local,
+  ) {
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(18),
@@ -1532,11 +1853,144 @@ class _FarmerDashboardScreenState
 
             const SizedBox(height: 15),
 
+            if (loadingCrops)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(20),
+                  child: CircularProgressIndicator(),
+                ),
+              )
+            else if (cropLots.isEmpty)
+              Center(
+                child: Padding(
+                  padding:
+                      const EdgeInsets.all(20),
+                  child: Text(
+                    getText(
+                      en: 'No crop lots added',
+                      ta: 'பயிர் தொகுப்பு இல்லை',
+                      mr: 'पीक लॉट उपलब्ध नाही',
+                    ),
+                  ),
+                ),
+              )
+            else
+              Column(
+                children:
+                    cropLots.map((crop) {
+                  return Container(
+                    margin:
+                        const EdgeInsets.only(
+                      bottom: 12,
+                    ),
+                    padding:
+                        const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius:
+                          BorderRadius.circular(18),
+                      border: Border.all(
+                        color:
+                            Colors.grey.shade200,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 45,
+                          height: 45,
+                          decoration:
+                              BoxDecoration(
+                            color:
+                                const Color(
+                              0xFFE8F5E9,
+                            ),
+                            borderRadius:
+                                BorderRadius.circular(
+                              12,
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.grass,
+                            color:
+                                Color(0xFF2E7D32),
+                          ),
+                        ),
+
+                        const SizedBox(width: 12),
+
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment:
+                                CrossAxisAlignment
+                                    .start,
+                            children: [
+                              Text(
+                                crop["crop_name"] ??
+                                    "Crop",
+                                style:
+                                    const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight:
+                                      FontWeight.bold,
+                                ),
+                              ),
+
+                              const SizedBox(height: 5),
+
+                              Text(
+                                "${crop["quantity"] ?? 0} kg",
+                                style: TextStyle(
+                                  color: Colors
+                                      .grey.shade600,
+                                ),
+                              ),
+
+                              if (crop[
+                                      "quality_grade"] !=
+                                  null)
+                                Text(
+                                  "Grade: ${crop["quality_grade"]}",
+                                  style: TextStyle(
+                                    color: Colors
+                                        .grey.shade600,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+
+                        const Icon(
+                          Icons
+                              .arrow_forward_ios,
+                          size: 16,
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+
+            const SizedBox(height: 15),
+
             SizedBox(
               width: double.infinity,
-              height: 52,
               child: ElevatedButton.icon(
-                onPressed: _showAddCropMessage,
+                onPressed: () async {
+                  final result =
+                      await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          const AddCropLotScreen(),
+                    ),
+                  );
+
+                  if (result == true) {
+                    await refreshDashboard();
+                  }
+                },
                 icon: const Icon(Icons.add),
                 label: Text(
                   getText(
@@ -1549,161 +2003,16 @@ class _FarmerDashboardScreenState
                   backgroundColor:
                       const Color(0xFF2E7D32),
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
+                  shape:
+                      RoundedRectangleBorder(
                     borderRadius:
                         BorderRadius.circular(15),
                   ),
                 ),
               ),
             ),
-
-            const SizedBox(height: 18),
-
-            _largeCropCard(
-              crop: getText(
-                en: 'Cotton',
-                ta: 'பருத்தி',
-                mr: 'कापूस',
-              ),
-              variety: 'MCU-5',
-              quantity: '500 kg',
-              grade: 'Grade A',
-              price: '₹7,500',
-              status: getText(
-                en: 'Available',
-                ta: 'கிடைக்கிறது',
-                mr: 'उपलब्ध',
-              ),
-              color: const Color(0xFF2E7D32),
-            ),
-
-            const SizedBox(height: 12),
-
-            _largeCropCard(
-              crop: getText(
-                en: 'Tomato',
-                ta: 'தக்காளி',
-                mr: 'टोमॅटो',
-              ),
-              variety: 'Hybrid',
-              quantity: '300 kg',
-              grade: 'Grade A',
-              price: '₹2,900',
-              status: getText(
-                en: 'Offers Received',
-                ta: 'சலுகைகள் வந்துள்ளன',
-                mr: 'ऑफर्स प्राप्त',
-              ),
-              color: const Color(0xFFE67E22),
-            ),
-
-            const SizedBox(height: 12),
-
-            _largeCropCard(
-              crop: getText(
-                en: 'Onion',
-                ta: 'வெங்காயம்',
-                mr: 'कांदा',
-              ),
-              variety: 'Nashik Red',
-              quantity: '800 kg',
-              grade: 'Grade B',
-              price: '₹3,000',
-              status: getText(
-                en: 'Sold',
-                ta: 'விற்கப்பட்டது',
-                mr: 'विकले',
-              ),
-              color: const Color(0xFF6A1B9A),
-            ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _largeCropCard({
-    required String crop,
-    required String variety,
-    required String quantity,
-    required String grade,
-    required String price,
-    required String status,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(17),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(19),
-        border: Border.all(
-          color: Colors.grey.shade200,
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: color.withValues(
-                alpha: 0.10,
-              ),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(
-              Icons.grass_rounded,
-              color: color,
-              size: 30,
-            ),
-          ),
-          const SizedBox(width: 13),
-          Expanded(
-            child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        crop,
-                        style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      price,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  '$variety • $quantity • $grade',
-                  style: TextStyle(
-                    color: Colors.grey.shade600,
-                    fontSize: 11.5,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  status,
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -1712,7 +2021,9 @@ class _FarmerDashboardScreenState
   // MARKET PAGE
   // ============================================================
 
-  Widget _buildMarketPage(AppLocalizations local) {
+  Widget _buildMarketPage(
+    AppLocalizations local,
+  ) {
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(18),
@@ -1733,11 +2044,11 @@ class _FarmerDashboardScreenState
             Text(
               getText(
                 en:
-                    'Understand prices, trends and market movement before selling.',
+                    'Use AI to understand prices, trends and selling decisions.',
                 ta:
-                    'விற்பனை செய்வதற்கு முன் விலை, போக்கு மற்றும் சந்தை மாற்றத்தைப் புரிந்து கொள்ளுங்கள்.',
+                    'விலைகள், போக்குகள் மற்றும் விற்பனை முடிவுகளைப் புரிந்துகொள்ள AI-ஐ பயன்படுத்துங்கள்.',
                 mr:
-                    'विक्री करण्यापूर्वी किंमत, ट्रेंड आणि बाजारातील बदल समजून घ्या.',
+                    'किंमती, ट्रेंड आणि विक्री निर्णय समजून घेण्यासाठी AI वापरा.',
               ),
               style: TextStyle(
                 color: Colors.grey.shade600,
@@ -1761,7 +2072,8 @@ class _FarmerDashboardScreenState
 
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(17),
+              padding:
+                  const EdgeInsets.all(17),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius:
@@ -1777,7 +2089,9 @@ class _FarmerDashboardScreenState
                     color: Color(0xFF2E7D32),
                     size: 30,
                   ),
+
                   const SizedBox(width: 12),
+
                   Expanded(
                     child: Text(
                       getText(
@@ -1790,7 +2104,8 @@ class _FarmerDashboardScreenState
                       ),
                       style: const TextStyle(
                         fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                        fontWeight:
+                            FontWeight.w600,
                       ),
                     ),
                   ),
@@ -1810,7 +2125,8 @@ class _FarmerDashboardScreenState
       padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius:
+            BorderRadius.circular(20),
         border: Border.all(
           color: Colors.grey.shade200,
         ),
@@ -1821,28 +2137,32 @@ class _FarmerDashboardScreenState
         children: [
           Text(
             getText(
-              en: 'Cotton Price Trend',
-              ta: 'பருத்தி விலை போக்கு',
-              mr: 'कापूस किंमत ट्रेंड',
+              en: 'Market Price Trend',
+              ta: 'சந்தை விலை போக்கு',
+              mr: 'बाजार किंमत ट्रेंड',
             ),
             style: const TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 16,
             ),
           ),
+
           const SizedBox(height: 5),
+
           Text(
             getText(
-              en: 'Last 7 days',
-              ta: 'கடந்த 7 நாட்கள்',
-              mr: 'गेल्या 7 दिवस',
+              en: 'AI market intelligence',
+              ta: 'AI சந்தை நுண்ணறிவு',
+              mr: 'AI बाजार माहिती',
             ),
             style: TextStyle(
               color: Colors.grey.shade600,
               fontSize: 11,
             ),
           ),
+
           const SizedBox(height: 18),
+
           Expanded(
             child: CustomPaint(
               painter: _TrendPainter(),
@@ -1855,192 +2175,12 @@ class _FarmerDashboardScreenState
   }
 
   // ============================================================
-  // ORDERS PAGE
+  // PROFILE
   // ============================================================
 
-  Widget _buildOrdersPage(AppLocalizations local) {
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment:
-              CrossAxisAlignment.start,
-          children: [
-            _pageHeading(
-              getText(
-                en: 'Orders',
-                ta: 'ஆர்டர்கள்',
-                mr: 'ऑर्डर्स',
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            _orderCard(
-              orderNumber: '#FM1024',
-              buyer: 'ABC Textiles',
-              crop: getText(
-                en: 'Cotton • 500 kg',
-                ta: 'பருத்தி • 500 கிலோ',
-                mr: 'कापूस • 500 किलो',
-              ),
-              amount: '₹37,000',
-              status: getText(
-                en: 'In Transit',
-                ta: 'வழியில்',
-                mr: 'मार्गावर',
-              ),
-              statusColor: const Color(0xFF1976D2),
-            ),
-
-            const SizedBox(height: 12),
-
-            _orderCard(
-              orderNumber: '#FM1019',
-              buyer: 'Sri Traders',
-              crop: getText(
-                en: 'Onion • 800 kg',
-                ta: 'வெங்காயம் • 800 கிலோ',
-                mr: 'कांदा • 800 किलो',
-              ),
-              amount: '₹24,800',
-              status: getText(
-                en: 'Delivered',
-                ta: 'வழங்கப்பட்டது',
-                mr: 'वितरित',
-              ),
-              statusColor: const Color(0xFF2E7D32),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _orderCard({
-    required String orderNumber,
-    required String buyer,
-    required String crop,
-    required String amount,
-    required String status,
-    required Color statusColor,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(17),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(19),
-        border: Border.all(
-          color: Colors.grey.shade200,
-        ),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.receipt_long_outlined,
-                color: Color(0xFF2E7D32),
-              ),
-              const SizedBox(width: 9),
-              Expanded(
-                child: Text(
-                  'Order $orderNumber',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 9,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(
-                    alpha: 0.10,
-                  ),
-                  borderRadius:
-                      BorderRadius.circular(20),
-                ),
-                child: Text(
-                  status,
-                  style: TextStyle(
-                    color: statusColor,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          _detailLine(
-            getText(
-              en: 'Buyer',
-              ta: 'வாங்குபவர்',
-              mr: 'खरेदीदार',
-            ),
-            buyer,
-          ),
-          _detailLine(
-            getText(
-              en: 'Crop',
-              ta: 'பயிர்',
-              mr: 'पीक',
-            ),
-            crop,
-          ),
-          _detailLine(
-            getText(
-              en: 'Order Value',
-              ta: 'ஆர்டர் மதிப்பு',
-              mr: 'ऑर्डर मूल्य',
-            ),
-            amount,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _detailLine(
-    String title,
-    String value,
+  Widget _buildProfilePage(
+    AppLocalizations local,
   ) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              title,
-              style: TextStyle(
-                color: Colors.grey.shade600,
-                fontSize: 12,
-              ),
-            ),
-          ),
-          Flexible(
-            child: Text(
-              value,
-              textAlign: TextAlign.end,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ============================================================
-  // PROFILE PAGE
-  // ============================================================
-
-  Widget _buildProfilePage(AppLocalizations local) {
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(18),
@@ -2051,7 +2191,8 @@ class _FarmerDashboardScreenState
             Container(
               width: 88,
               height: 88,
-              decoration: const BoxDecoration(
+              decoration:
+                  const BoxDecoration(
                 color: Color(0xFFE8F5E9),
                 shape: BoxShape.circle,
               ),
@@ -2080,9 +2221,12 @@ class _FarmerDashboardScreenState
 
             Text(
               getText(
-                en: 'Your farm and account information',
-                ta: 'உங்கள் பண்ணை மற்றும் கணக்கு தகவல்கள்',
-                mr: 'तुमच्या शेताची आणि खात्याची माहिती',
+                en:
+                    'Your farm and account information',
+                ta:
+                    'உங்கள் பண்ணை மற்றும் கணக்கு தகவல்கள்',
+                mr:
+                    'तुमच्या शेताची आणि खात्याची माहिती',
               ),
               style: TextStyle(
                 color: Colors.grey.shade600,
@@ -2100,6 +2244,7 @@ class _FarmerDashboardScreenState
                 mr: 'वैयक्तिक माहिती',
               ),
             ),
+
             _profileItem(
               Icons.landscape_outlined,
               getText(
@@ -2108,6 +2253,7 @@ class _FarmerDashboardScreenState
                 mr: 'शेताची माहिती',
               ),
             ),
+
             _profileItem(
               Icons.account_balance_outlined,
               getText(
@@ -2116,6 +2262,7 @@ class _FarmerDashboardScreenState
                 mr: 'बँक माहिती',
               ),
             ),
+
             _profileItem(
               Icons.notifications_none,
               getText(
@@ -2124,6 +2271,7 @@ class _FarmerDashboardScreenState
                 mr: 'सूचना सेटिंग्ज',
               ),
             ),
+
             _profileItem(
               Icons.help_outline,
               getText(
@@ -2143,10 +2291,12 @@ class _FarmerDashboardScreenState
     String title,
   ) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin:
+          const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius:
+            BorderRadius.circular(16),
         border: Border.all(
           color: Colors.grey.shade200,
         ),
@@ -2169,9 +2319,12 @@ class _FarmerDashboardScreenState
         onTap: () {
           _showComingSoon(
             getText(
-              en: '$title will be connected later.',
-              ta: '$title பின்னர் இணைக்கப்படும்.',
-              mr: '$title नंतर जोडले जाईल.',
+              en:
+                  '$title will be connected later.',
+              ta:
+                  '$title பின்னர் இணைக்கப்படும்.',
+              mr:
+                  '$title नंतर जोडले जाईल.',
             ),
           );
         },
@@ -2199,6 +2352,7 @@ class _FarmerDashboardScreenState
             ),
           ),
         ),
+
         TextButton(
           onPressed: onPressed,
           child: Text(
@@ -2237,7 +2391,8 @@ class _FarmerDashboardScreenState
       padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(21),
+        borderRadius:
+            BorderRadius.circular(21),
         border: Border.all(
           color: Colors.grey.shade200,
         ),
@@ -2253,7 +2408,8 @@ class _FarmerDashboardScreenState
                 height: 45,
                 decoration: BoxDecoration(
                   color: backgroundColor,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius:
+                      BorderRadius.circular(14),
                 ),
                 child: Icon(
                   icon,
@@ -2261,7 +2417,9 @@ class _FarmerDashboardScreenState
                   size: 24,
                 ),
               ),
+
               const SizedBox(width: 11),
+
               Expanded(
                 child: Text(
                   title,
@@ -2273,7 +2431,9 @@ class _FarmerDashboardScreenState
               ),
             ],
           ),
+
           const SizedBox(height: 12),
+
           Text(
             subtitle,
             style: TextStyle(
@@ -2282,20 +2442,24 @@ class _FarmerDashboardScreenState
               height: 1.4,
             ),
           ),
+
           const SizedBox(height: 13),
+
           SizedBox(
             width: double.infinity,
             height: 42,
             child: OutlinedButton(
               onPressed: onPressed,
-              style: OutlinedButton.styleFrom(
+              style:
+                  OutlinedButton.styleFrom(
                 foregroundColor: iconColor,
                 side: BorderSide(
                   color: iconColor.withValues(
                     alpha: 0.35,
                   ),
                 ),
-                shape: RoundedRectangleBorder(
+                shape:
+                    RoundedRectangleBorder(
                   borderRadius:
                       BorderRadius.circular(12),
                 ),
@@ -2308,6 +2472,10 @@ class _FarmerDashboardScreenState
     );
   }
 
+  // ============================================================
+  // BOTTOM NAVIGATION
+  // ============================================================
+
   Widget _buildBottomNavigationBar() {
     return NavigationBar(
       height: 68,
@@ -2319,10 +2487,13 @@ class _FarmerDashboardScreenState
           _selectedIndex = index;
         });
       },
-      indicatorColor: const Color(0xFFE8F5E9),
+      indicatorColor:
+          const Color(0xFFE8F5E9),
       destinations: [
         NavigationDestination(
-          icon: const Icon(Icons.home_outlined),
+          icon: const Icon(
+            Icons.home_outlined,
+          ),
           selectedIcon: const Icon(
             Icons.home_rounded,
             color: Color(0xFF2E7D32),
@@ -2333,8 +2504,11 @@ class _FarmerDashboardScreenState
             mr: 'होम',
           ),
         ),
+
         NavigationDestination(
-          icon: const Icon(Icons.grass_outlined),
+          icon: const Icon(
+            Icons.grass_outlined,
+          ),
           selectedIcon: const Icon(
             Icons.grass_rounded,
             color: Color(0xFF2E7D32),
@@ -2345,8 +2519,11 @@ class _FarmerDashboardScreenState
             mr: 'पिके',
           ),
         ),
+
         NavigationDestination(
-          icon: const Icon(Icons.insights_outlined),
+          icon: const Icon(
+            Icons.insights_outlined,
+          ),
           selectedIcon: const Icon(
             Icons.insights_rounded,
             color: Color(0xFF2E7D32),
@@ -2357,8 +2534,11 @@ class _FarmerDashboardScreenState
             mr: 'बाजार',
           ),
         ),
+
         NavigationDestination(
-          icon: const Icon(Icons.receipt_long_outlined),
+          icon: const Icon(
+            Icons.receipt_long_outlined,
+          ),
           selectedIcon: const Icon(
             Icons.receipt_long_rounded,
             color: Color(0xFF2E7D32),
@@ -2369,8 +2549,11 @@ class _FarmerDashboardScreenState
             mr: 'ऑर्डर्स',
           ),
         ),
+
         NavigationDestination(
-          icon: const Icon(Icons.person_outline_rounded),
+          icon: const Icon(
+            Icons.person_outline_rounded,
+          ),
           selectedIcon: const Icon(
             Icons.person_rounded,
             color: Color(0xFF2E7D32),
@@ -2386,55 +2569,33 @@ class _FarmerDashboardScreenState
   }
 
   // ============================================================
-  // ACTIONS
+  // NOTIFICATIONS
   // ============================================================
-
-  void _showAddCropMessage() {
-    _showComingSoon(
-      getText(
-        en:
-            'Create Crop Lot screen will be connected next.',
-        ta:
-            'பயிர் தொகுப்பு உருவாக்கும் screen அடுத்ததாக இணைக்கப்படும்.',
-        mr:
-            'पिकाचा लॉट तयार करण्याची स्क्रीन पुढे जोडली जाईल.',
-      ),
-    );
-  }
-
-  void _showMapMessage() {
-    _showComingSoon(
-      getText(
-        en:
-            'OpenStreetMap delivery tracking will be connected here.',
-        ta:
-            'OpenStreetMap delivery tracking இங்கே இணைக்கப்படும்.',
-        mr:
-            'OpenStreetMap delivery tracking येथे जोडले जाईल.',
-      ),
-    );
-  }
 
   void _showNotifications() {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
+      shape:
+          const RoundedRectangleBorder(
+        borderRadius:
+            BorderRadius.vertical(
           top: Radius.circular(24),
         ),
       ),
       builder: (_) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(
+            padding:
+                const EdgeInsets.fromLTRB(
               20,
               18,
               20,
               25,
             ),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisSize:
+                  MainAxisSize.min,
               crossAxisAlignment:
                   CrossAxisAlignment.start,
               children: [
@@ -2446,41 +2607,46 @@ class _FarmerDashboardScreenState
                   ),
                   style: const TextStyle(
                     fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                    fontWeight:
+                        FontWeight.bold,
                   ),
                 ),
+
                 const SizedBox(height: 15),
+
                 _notificationItem(
                   Icons.local_offer_outlined,
                   getText(
                     en:
-                        'New buyer offer received for Cotton.',
+                        'New buyer offers will appear here.',
                     ta:
-                        'பருத்திக்கு புதிய வாங்குபவர் சலுகை வந்துள்ளது.',
+                        'புதிய வாங்குபவர் சலுகைகள் இங்கே தோன்றும்.',
                     mr:
-                        'कापसासाठी नवीन खरेदीदार ऑफर आली आहे.',
+                        'नवीन खरेदीदार ऑफर्स येथे दिसतील.',
                   ),
                 ),
+
                 _notificationItem(
                   Icons.trending_up,
                   getText(
                     en:
-                        'Cotton price is showing an upward trend.',
+                        'Market intelligence updates will appear here.',
                     ta:
-                        'பருத்தி விலை உயர்ந்து வருகிறது.',
+                        'சந்தை நுண்ணறிவு புதுப்பிப்புகள் இங்கே தோன்றும்.',
                     mr:
-                        'कापसाच्या किमतीत वाढ होत आहे.',
+                        'बाजार माहिती अपडेट्स येथे दिसतील.',
                   ),
                 ),
+
                 _notificationItem(
                   Icons.local_shipping_outlined,
                   getText(
                     en:
-                        'Your pickup has been scheduled.',
+                        'Delivery updates will appear here.',
                     ta:
-                        'உங்கள் pickup திட்டமிடப்பட்டுள்ளது.',
+                        'டெலிவரி புதுப்பிப்புகள் இங்கே தோன்றும்.',
                     mr:
-                        'तुमचा pickup नियोजित झाला आहे.',
+                        'डिलिव्हरी अपडेट्स येथे दिसतील.',
                   ),
                 ),
               ],
@@ -2496,13 +2662,15 @@ class _FarmerDashboardScreenState
     String text,
   ) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 13),
+      padding:
+          const EdgeInsets.only(bottom: 13),
       child: Row(
         children: [
           Container(
             width: 38,
             height: 38,
-            decoration: const BoxDecoration(
+            decoration:
+                const BoxDecoration(
               color: Color(0xFFE8F5E9),
               shape: BoxShape.circle,
             ),
@@ -2512,7 +2680,9 @@ class _FarmerDashboardScreenState
               size: 19,
             ),
           ),
+
           const SizedBox(width: 11),
+
           Expanded(
             child: Text(
               text,
@@ -2527,11 +2697,17 @@ class _FarmerDashboardScreenState
     );
   }
 
+  // ============================================================
+  // COMING SOON
+  // ============================================================
+
   void _showComingSoon(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context)
+        .showSnackBar(
       SnackBar(
         content: Text(message),
-        behavior: SnackBarBehavior.floating,
+        behavior:
+            SnackBarBehavior.floating,
       ),
     );
   }
@@ -2555,44 +2731,60 @@ class _TrendPainter extends CustomPainter {
 
     final path = Path();
 
-    path.moveTo(0, size.height * 0.78);
+    path.moveTo(
+      0,
+      size.height * 0.78,
+    );
+
     path.lineTo(
       size.width * 0.15,
       size.height * 0.68,
     );
+
     path.lineTo(
       size.width * 0.30,
       size.height * 0.72,
     );
+
     path.lineTo(
       size.width * 0.43,
       size.height * 0.48,
     );
+
     path.lineTo(
       size.width * 0.57,
       size.height * 0.56,
     );
+
     path.lineTo(
       size.width * 0.70,
       size.height * 0.31,
     );
+
     path.lineTo(
       size.width * 0.84,
       size.height * 0.37,
     );
+
     path.lineTo(
       size.width,
       size.height * 0.13,
     );
 
-    canvas.drawPath(path, paint);
+    canvas.drawPath(
+      path,
+      paint,
+    );
 
     final dotPaint = Paint()
       ..color = const Color(0xFF2E7D32)
       ..style = PaintingStyle.fill;
 
     final points = [
-      Offset(0, size.height * 0.78),
+      Offset(
+        0,
+        size.height * 0.78,
+      ),
       Offset(
         size.width * 0.15,
         size.height * 0.68,
@@ -2624,7 +2816,11 @@ class _TrendPainter extends CustomPainter {
     ];
 
     for (final point in points) {
-      canvas.drawCircle(point, 4, dotPaint);
+      canvas.drawCircle(
+        point,
+        4,
+        dotPaint,
+      );
     }
   }
 
