@@ -6,7 +6,6 @@ from app.services.buyer_matching_service import (
     match_buyers_for_crop_lot,
 )
 
-
 router = APIRouter()
 
 
@@ -20,6 +19,7 @@ def find_matching_buyers(
     try:
         result = match_buyers_for_crop_lot(
             crop_lot_id=request.crop_lot_id,
+            bulk_lot_id=request.bulk_lot_id,
             farmer_id=farmer_id,
         )
 
