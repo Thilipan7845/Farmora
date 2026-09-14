@@ -120,17 +120,13 @@ def create_order(
             detail="Order quantity must be greater than zero",
         )
 
-    if order.quantity > float(
-        offer["quantity"]
-    ):
+    if order.quantity > float(offer["quantity"]):
         raise HTTPException(
             status_code=400,
             detail="Order quantity cannot exceed accepted offer quantity",
         )
 
-    if order.quantity > float(
-        crop_lot["quantity"]
-    ):
+    if order.quantity > float(crop_lot["quantity"]):
         raise HTTPException(
             status_code=400,
             detail="Order quantity exceeds crop lot quantity",
@@ -150,10 +146,7 @@ def create_order(
     # CALCULATE TOTAL
     # --------------------------------------------------------
 
-    total_amount = (
-        order.quantity
-        * order.agreed_price
-    )
+    total_amount = order.quantity * order.agreed_price
 
     # --------------------------------------------------------
     # CREATE ORDER
@@ -189,7 +182,7 @@ def create_order(
 
 
 # ============================================================
-# GET MY ORDERS
+# GET MY ORDERS - BUYER
 # ============================================================
 
 @router.get("")
@@ -212,6 +205,34 @@ def get_my_orders(
 
     return {
         "buyer_id": buyer_id,
+        "orders": result.data,
+    }
+
+
+# ============================================================
+# GET FARMER ORDERS
+# ============================================================
+
+@router.get("/farmer")
+def get_farmer_orders(
+    current_user: dict = Depends(get_current_user),
+):
+    farmer_id = current_user["sub"]
+
+    result = (
+        supabase
+        .table("orders")
+        .select("*")
+        .eq("farmer_id", farmer_id)
+        .order(
+            "created_at",
+            desc=True,
+        )
+        .execute()
+    )
+
+    return {
+        "farmer_id": farmer_id,
         "orders": result.data,
     }
 

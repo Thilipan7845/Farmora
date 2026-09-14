@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from app.database.supabase_client import supabase
+
 from app.routes import (
     health,
     auth,
@@ -18,7 +19,9 @@ from app.routes import (
     location,
     intelligence,
     buyer_matching,
+    dashboard,
 )
+
 app = FastAPI(title="Farmora API")
 
 
@@ -42,6 +45,11 @@ app.include_router(
     buyer_matching.router,
     prefix="/api/buyer-matching",
 )
+app.include_router(
+    dashboard.router,
+    prefix="/api/farmer",
+)
+
 
 @app.get("/")
 def root():

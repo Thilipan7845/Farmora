@@ -4,7 +4,6 @@ from app.core.security import get_current_user
 from app.database.supabase_client import supabase
 from app.schemas.logistics import LogisticsCreate
 
-
 router = APIRouter()
 
 
@@ -102,7 +101,7 @@ def get_my_logistics(
 
     order_ids = [
         order["id"]
-        for order in orders_result.data
+        for order in (orders_result.data or [])
     ]
 
     if not order_ids:
@@ -123,7 +122,93 @@ def get_my_logistics(
     )
 
     return {
-        "logistics": result.data
+        "logistics": result.data or []
+    }
+
+
+# ============================================================
+# FARMER LOGISTICS TRACKING
+# ============================================================
+
+@router.get("/tracking/{order_id}")
+def get_farmer_logistics_tracking(
+    order_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    farmer_id = current_user["sub"]
+
+    # --------------------------------------------------------
+    # GET ORDER
+    # --------------------------------------------------------
+
+    order_result = (
+        supabase
+        .table("orders")
+        .select("*")
+        .eq("id", order_id)
+        .eq("farmer_id", farmer_id)
+        .single()
+        .execute()
+    )
+
+    if not order_result.data:
+        raise HTTPException(
+            status_code=404,
+            detail="Order not found or you are not allowed to view this order",
+        )
+
+    order = order_result.data
+
+    # --------------------------------------------------------
+    # GET LOGISTICS FOR THIS ORDER
+    # --------------------------------------------------------
+
+    logistics_result = (
+        supabase
+        .table("logistics")
+        .select("*")
+        .eq("order_id", order_id)
+        .order(
+            "created_at",
+            desc=True,
+        )
+        .limit(1)
+        .execute()
+    )
+
+    logistics_data = logistics_result.data or []
+
+    if not logistics_data:
+        raise HTTPException(
+            status_code=404,
+            detail="Logistics information is not available for this order",
+        )
+
+    logistics = logistics_data[0]
+
+    # --------------------------------------------------------
+    # TRACKING RESPONSE
+    # --------------------------------------------------------
+
+    return {
+        "order_id": order["id"],
+        "order_status": order.get("status"),
+        "tracking": {
+            "logistics_id": logistics.get("id"),
+            "status": logistics.get("status"),
+            "pickup_location": logistics.get("pickup_location"),
+            "delivery_location": logistics.get("delivery_location"),
+            "pickup_latitude": logistics.get("pickup_latitude"),
+            "pickup_longitude": logistics.get("pickup_longitude"),
+            "delivery_latitude": logistics.get("delivery_latitude"),
+            "delivery_longitude": logistics.get("delivery_longitude"),
+            "distance_km": logistics.get("distance_km"),
+            "transport_type": logistics.get("transport_type"),
+            "transport_cost": logistics.get("transport_cost"),
+            "estimated_delivery_date": logistics.get(
+                "estimated_delivery_date"
+            ),
+        },
     }
 
 
@@ -294,14 +379,6 @@ def update_logistics_status(
 
     # --------------------------------------------------------
     # LOGISTICS → ORDER STATUS MAPPING
-    # --------------------------------------------------------
-    #
-    # Your orders table does NOT allow "shipped".
-    #
-    # Therefore:
-    #
-    # in_transit → processing
-    #
     # --------------------------------------------------------
 
     order_status_map = {

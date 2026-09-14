@@ -140,7 +140,7 @@ def create_payment(
 
 
 # ============================================================
-# GET MY PAYMENTS
+# GET MY PAYMENTS - BUYER
 # ============================================================
 
 @router.get("")
@@ -160,7 +160,7 @@ def get_my_payments(
 
     order_ids = [
         order["id"]
-        for order in orders_result.data
+        for order in (orders_result.data or [])
     ]
 
     if not order_ids:
@@ -183,6 +183,108 @@ def get_my_payments(
 
     return {
         "payments": result.data
+    }
+
+
+# ============================================================
+# GET FARMER PAYMENT SUMMARY
+# ============================================================
+
+@router.get("/farmer")
+def get_farmer_payment_summary(
+    current_user: dict = Depends(get_current_user),
+):
+    farmer_id = current_user["sub"]
+
+    # --------------------------------------------------------
+    # GET FARMER ORDERS
+    # --------------------------------------------------------
+
+    orders_result = (
+        supabase
+        .table("orders")
+        .select("id, total_amount, status")
+        .eq("farmer_id", farmer_id)
+        .execute()
+    )
+
+    orders = orders_result.data or []
+
+    order_ids = [
+        order["id"]
+        for order in orders
+    ]
+
+    # --------------------------------------------------------
+    # TOTAL SALES
+    #
+    # Count all non-cancelled farmer orders.
+    # --------------------------------------------------------
+
+    total_sales = 0.0
+
+    for order in orders:
+        if order.get("status") != "cancelled":
+            total_sales += float(
+                order.get("total_amount", 0) or 0
+            )
+
+    # --------------------------------------------------------
+    # GET PAYMENTS FOR FARMER ORDERS
+    # --------------------------------------------------------
+
+    received = 0.0
+    pending = 0.0
+
+    if order_ids:
+        payments_result = (
+            supabase
+            .table("payments")
+            .select("amount, status")
+            .in_("order_id", order_ids)
+            .execute()
+        )
+
+        payments = payments_result.data or []
+
+        for payment in payments:
+            amount = float(
+                payment.get("amount", 0) or 0
+            )
+
+            status = payment.get("status")
+
+            if status == "completed":
+                received += amount
+
+            elif status in ["pending", "processing"]:
+                pending += amount
+
+    # --------------------------------------------------------
+    # EXPENSES
+    #
+    # The current payments table does not contain an
+    # expense field, so expenses are 0 for this version.
+    # --------------------------------------------------------
+
+    expenses = 0.0
+
+    # --------------------------------------------------------
+    # NET AMOUNT
+    # --------------------------------------------------------
+
+    net_amount = received - expenses
+
+    # --------------------------------------------------------
+    # RESPONSE
+    # --------------------------------------------------------
+
+    return {
+        "total_sales": total_sales,
+        "received": received,
+        "pending": pending,
+        "expenses": expenses,
+        "net_amount": net_amount,
     }
 
 
