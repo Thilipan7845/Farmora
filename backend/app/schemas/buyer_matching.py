@@ -3,7 +3,8 @@ from typing import Optional
 
 
 class BuyerMatchRequest(BaseModel):
-    crop_lot_id: str
+    crop_lot_id: Optional[str] = None
+    bulk_lot_id: Optional[str] = None
 
 
 class BuyerMatchResponse(BaseModel):
