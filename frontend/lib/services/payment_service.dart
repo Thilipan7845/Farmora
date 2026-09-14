@@ -4,81 +4,32 @@ import 'api_client.dart';
 class PaymentService {
 
 
-  static Future<List<dynamic>> getPayments() async {
+  // ============================================================
+  // FARMER PAYMENT SUMMARY
+  // ============================================================
+
+  static Future<Map<String, dynamic>>
+      getFarmerPaymentSummary() async {
 
 
     final response =
         await ApiClient.get(
-          "/api/payments",
+          "/api/payments/farmer",
         );
 
 
-    return response;
+    if(response is Map<String,dynamic>){
+
+      return response;
+
+    }
 
 
-  }
-
-
-
-  static Future<dynamic> getPayment(
-      String id
-      ) async {
-
-
-    return await ApiClient.get(
-
-      "/api/payments/$id",
-
+    throw Exception(
+      "Invalid payment summary response",
     );
 
 
   }
-
-
-
-  static Future<dynamic> createPayment(
-
-      Map<String,dynamic> data
-
-      ) async {
-
-
-    return await ApiClient.post(
-
-      "/api/payments",
-
-      data,
-
-    );
-
-
-  }
-
-
-
-  static Future<dynamic> updatePaymentStatus(
-
-      String id,
-
-      String status,
-
-      ) async {
-
-
-    return await ApiClient.put(
-
-      "/api/payments/$id/status",
-
-      {
-
-        "status": status,
-
-      },
-
-    );
-
-
-  }
-
 
 }

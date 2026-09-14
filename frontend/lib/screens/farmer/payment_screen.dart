@@ -3,23 +3,18 @@ import 'package:flutter/material.dart';
 import '../../services/payment_service.dart';
 
 
-
 class PaymentScreen extends StatefulWidget {
-
 
   const PaymentScreen({
     super.key,
   });
 
 
-
   @override
   State<PaymentScreen> createState() =>
       _PaymentScreenState();
 
-
 }
-
 
 
 
@@ -30,8 +25,7 @@ class _PaymentScreenState
   bool loading = true;
 
 
-  List<dynamic> payments = [];
-
+  Map<String,dynamic>? payment;
 
 
 
@@ -40,27 +34,31 @@ class _PaymentScreenState
 
     super.initState();
 
-    loadPayments();
+    loadPayment();
 
   }
 
 
 
 
-  Future<void> loadPayments() async {
+  Future<void> loadPayment() async {
 
 
     try{
 
 
       final data =
-      await PaymentService.getPayments();
+      await PaymentService
+          .getFarmerPaymentSummary();
 
+
+
+      if(!mounted) return;
 
 
       setState(() {
 
-        payments=data;
+        payment=data;
 
         loading=false;
 
@@ -70,6 +68,9 @@ class _PaymentScreenState
 
     }
     catch(e){
+
+
+      if(!mounted) return;
 
 
       setState(() {
@@ -95,9 +96,12 @@ class _PaymentScreenState
     return Scaffold(
 
 
-      appBar: AppBar(
+      appBar:
+
+      AppBar(
 
         title:
+
         const Text(
           "Payments",
         ),
@@ -110,6 +114,7 @@ class _PaymentScreenState
 
 
       loading
+
 
       ?
 
@@ -124,7 +129,8 @@ class _PaymentScreenState
 
       :
 
-      payments.isEmpty
+
+      payment == null
 
 
       ?
@@ -134,7 +140,7 @@ class _PaymentScreenState
         child:
 
         Text(
-          "No payments found",
+          "No payment data available",
         ),
 
       )
@@ -142,67 +148,211 @@ class _PaymentScreenState
 
       :
 
-      ListView.builder(
 
+      ListView(
 
         padding:
 
         const EdgeInsets.all(16),
 
 
-
-        itemCount:
-
-        payments.length,
+        children:[
 
 
 
-        itemBuilder:(context,index){
+          _paymentCard(
+
+            "Total Sales",
+
+            payment!["total_sales"],
+
+            Icons.analytics,
+
+          ),
 
 
 
-          final payment =
-          payments[index];
+          _paymentCard(
+
+            "Received",
+
+            payment!["received"],
+
+            Icons.check_circle,
+
+          ),
 
 
 
-          return Container(
+          _paymentCard(
+
+            "Pending",
+
+            payment!["pending"],
+
+            Icons.pending,
+
+          ),
 
 
-            margin:
 
-            const EdgeInsets.only(
-              bottom:15,
+          _paymentCard(
+
+            "Expenses",
+
+            payment!["expenses"],
+
+            Icons.money_off,
+
+          ),
+
+
+
+          _paymentCard(
+
+            "Net Amount",
+
+            payment!["net_amount"],
+
+            Icons.account_balance_wallet,
+
+          ),
+
+
+
+        ],
+
+
+      ),
+
+
+    );
+
+
+  }
+
+
+
+
+
+  Widget _paymentCard(
+
+      String title,
+
+      dynamic amount,
+
+      IconData icon,
+
+      ){
+
+
+
+    return Container(
+
+
+      margin:
+
+      const EdgeInsets.only(
+        bottom:16,
+      ),
+
+
+
+      padding:
+
+      const EdgeInsets.all(20),
+
+
+
+      decoration:
+
+      BoxDecoration(
+
+        color:
+
+        Colors.white,
+
+        borderRadius:
+
+        BorderRadius.circular(20),
+
+
+        boxShadow:[
+
+          BoxShadow(
+
+            color:
+
+            Colors.grey.withValues(
+              alpha:0.15,
+            ),
+
+            blurRadius:10,
+
+            offset:
+
+            const Offset(0,5),
+
+          )
+
+        ],
+
+
+      ),
+
+
+
+      child:
+
+      Row(
+
+        children:[
+
+
+          CircleAvatar(
+
+            radius:25,
+
+            backgroundColor:
+
+            const Color(
+              0xFFE8F5E9,
             ),
 
 
-            padding:
+            child:
 
-            const EdgeInsets.all(18),
+            Icon(
 
+              icon,
 
+              color:
 
-            decoration:
-
-            BoxDecoration(
-
-              color:Colors.white,
-
-              borderRadius:
-
-              BorderRadius.circular(18),
+              const Color(
+                0xFF2E7D32,
+              ),
 
             ),
 
+          ),
 
 
-            child:Column(
 
+          const SizedBox(
+            width:16,
+          ),
+
+
+
+          Expanded(
+
+            child:
+
+            Column(
 
               crossAxisAlignment:
 
               CrossAxisAlignment.start,
-
 
 
               children:[
@@ -210,13 +360,37 @@ class _PaymentScreenState
 
                 Text(
 
-                  "₹${payment["amount"] ?? 0}",
+                  title,
+
+                  style:
+
+                  TextStyle(
+
+                    color:
+
+                    Colors.grey.shade600,
+
+                  ),
+
+                ),
+
+
+
+                const SizedBox(
+                  height:5,
+                ),
+
+
+
+                Text(
+
+                  "₹${amount ?? 0}",
 
                   style:
 
                   const TextStyle(
 
-                    fontSize:24,
+                    fontSize:22,
 
                     fontWeight:
                     FontWeight.bold,
@@ -226,39 +400,14 @@ class _PaymentScreenState
                 ),
 
 
-
-                const SizedBox(
-                  height:8,
-                ),
-
-
-
-                Text(
-
-                  "Status: ${payment["status"] ?? "Pending"}",
-
-                ),
-
-
-
-                Text(
-
-                  "Order ID: ${payment["order_id"] ?? "-"}",
-
-                ),
-
-
-
               ],
 
 
             ),
 
+          )
 
-          );
-
-
-        },
+        ],
 
       ),
 
