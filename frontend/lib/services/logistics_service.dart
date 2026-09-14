@@ -4,72 +4,75 @@ import 'api_client.dart';
 class LogisticsService {
 
 
-  static Future<List<dynamic>> getLogistics() async {
-
-    final response =
-        await ApiClient.get(
-          "/api/logistics",
-        );
-
-
-    return response;
-
-  }
+  final ApiClient apiClient = ApiClient();
 
 
 
-  static Future<dynamic> getLogistic(
-      String id
-      ) async {
+  Future<dynamic> getLogistics() async {
 
 
-    return await ApiClient.get(
-
-      "/api/logistics/$id",
-
-    );
+    try {
 
 
-  }
+      final response =
+          await apiClient.get(
+
+            "/api/logistics",
+
+          );
 
 
-
-  static Future<dynamic> updateStatus(
-      String id,
-      String status,
-      ) async {
+      return response;
 
 
-    return await ApiClient.put(
+    } catch (e) {
 
-      "/api/logistics/$id/status",
 
-      {
+      throw Exception(
+          "Failed to load logistics data: $e"
+      );
 
-        "status": status,
 
-      },
-
-    );
-
+    }
 
   }
 
 
 
-  static Future<dynamic> createLogistics(
-      Map<String,dynamic> data
+
+  Future<dynamic> updateLogisticsStatus(
+      String logisticsId,
+      String status
       ) async {
 
 
-    return await ApiClient.post(
+    try {
 
-      "/api/logistics",
 
-      data,
+      final response =
+          await apiClient.post(
 
-    );
+            "/api/logistics/$logisticsId/status",
 
+            {
+              "status": status
+            },
+
+          );
+
+
+      return response;
+
+
+    } catch(e){
+
+
+      throw Exception(
+          "Failed to update logistics status: $e"
+      );
+
+
+    }
 
   }
 

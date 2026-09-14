@@ -4,79 +4,75 @@ import 'api_client.dart';
 class PaymentService {
 
 
-  static Future<List<dynamic>> getPayments() async {
-
-
-    final response =
-        await ApiClient.get(
-          "/api/payments",
-        );
-
-
-    return response;
-
-
-  }
+  final ApiClient apiClient = ApiClient();
 
 
 
-  static Future<dynamic> getPayment(
-      String id
-      ) async {
+  Future<dynamic> getPayments() async {
 
 
-    return await ApiClient.get(
-
-      "/api/payments/$id",
-
-    );
+    try {
 
 
-  }
+      final response =
+          await apiClient.get(
+
+            "/api/payments",
+
+          );
 
 
-
-  static Future<dynamic> createPayment(
-
-      Map<String,dynamic> data
-
-      ) async {
+      return response;
 
 
-    return await ApiClient.post(
+    } catch (e) {
 
-      "/api/payments",
 
-      data,
+      throw Exception(
+          "Failed to load payments: $e"
+      );
 
-    );
 
+    }
 
   }
 
 
 
-  static Future<dynamic> updatePaymentStatus(
 
-      String id,
-
-      String status,
-
+  Future<dynamic> updatePaymentStatus(
+      String paymentId,
+      String status
       ) async {
 
 
-    return await ApiClient.put(
+    try {
 
-      "/api/payments/$id/status",
 
-      {
+      final response =
+          await apiClient.post(
 
-        "status": status,
+            "/api/payments/$paymentId/status",
 
-      },
+            {
+              "status": status
+            },
 
-    );
+          );
 
+
+      return response;
+
+
+    } catch(e){
+
+
+      throw Exception(
+          "Failed to update payment status: $e"
+      );
+
+
+    }
 
   }
 

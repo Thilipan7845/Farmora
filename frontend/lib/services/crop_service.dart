@@ -4,59 +4,75 @@ import 'api_client.dart';
 class CropService {
 
 
-  static Future<Map<String,dynamic>> createCropLot(
-      Map<String,dynamic> data
+  final ApiClient apiClient = ApiClient();
+
+
+
+  Future<dynamic> getCropLots() async {
+
+
+    try {
+
+
+      final response =
+          await apiClient.get(
+
+            "/api/crop-lots",
+
+          );
+
+
+      return response;
+
+
+    } catch (e) {
+
+
+      throw Exception(
+          "Failed to load crop lots: $e"
+      );
+
+
+    }
+
+
+  }
+
+
+
+  Future<dynamic> createCropLot(
+      Map<String,dynamic> cropData
       ) async {
 
 
-    return await ApiClient.post(
-
-      "/api/crop-lots",
-
-      data,
-
-    );
+    try {
 
 
-  }
+      final response =
+          await apiClient.post(
+
+            "/api/crop-lots",
+
+            cropData,
+
+          );
 
 
+      return response;
 
 
-
-  static Future<List<dynamic>> getCropLots() async {
-
-
-    final response =
-        await ApiClient.get(
-
-      "/api/crop-lots",
-
-    );
+    } catch(e){
 
 
-
-    return response as List<dynamic>;
-
-  }
-
+      throw Exception(
+          "Failed to create crop lot: $e"
+      );
 
 
-
-  static Future<Map<String,dynamic>> getCropLot(
-      String id
-      ) async {
-
-
-    return await ApiClient.get(
-
-      "/api/crop-lots/$id",
-
-    );
+    }
 
 
   }
-
 
 
 }

@@ -4,22 +4,41 @@ import 'api_client.dart';
 class IntelligenceService {
 
 
-  static Future<Map<String,dynamic>> getDecision(
-      Map<String,dynamic> data
+  final ApiClient apiClient = ApiClient();
+
+
+
+  Future<dynamic> getDecision(
+      Map<String, dynamic> cropData
       ) async {
 
 
-    final response =
-        await ApiClient.post(
-
-      "/api/intelligence/decision",
-
-      data,
-
-    );
+    try {
 
 
-    return response;
+      final response =
+          await apiClient.post(
+
+            "/api/intelligence/decision",
+
+            cropData,
+
+          );
+
+
+      return response;
+
+
+    } catch (e) {
+
+
+      throw Exception(
+          "Failed to get intelligence decision: $e"
+      );
+
+
+    }
+
 
   }
 
