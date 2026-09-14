@@ -4,14 +4,20 @@ import 'screens/fpo/fpo_dashboard.dart';
 
 void main() {
 
-  runApp(const FarmoraApp());
+  runApp(
+    const FarmoraApp(),
+  );
 
 }
 
 
+
 class FarmoraApp extends StatelessWidget {
 
-  const FarmoraApp({super.key});
+  const FarmoraApp({
+    super.key,
+  });
+
 
 
   @override
@@ -24,6 +30,7 @@ class FarmoraApp extends StatelessWidget {
 
 
       title: 'Farmora',
+
 
 
       theme: ThemeData(
@@ -39,7 +46,9 @@ class FarmoraApp extends StatelessWidget {
 
 
         scaffoldBackgroundColor:
+
         const Color(0xffF6F7F2),
+
 
 
         appBarTheme: const AppBarTheme(
@@ -52,12 +61,16 @@ class FarmoraApp extends StatelessWidget {
 
         ),
 
+
       ),
+
 
 
       home: const FpoDashboard(),
 
+
     );
+
 
   }
 

@@ -4,12 +4,8 @@ import 'api_client.dart';
 class BuyerService {
 
 
-  final ApiClient apiClient = ApiClient();
-
-
-
-  Future<dynamic> findBuyerMatches(
-      Map<String, dynamic> cropData
+  static Future<dynamic> findBuyerMatches(
+      Map<String, dynamic> cropData,
       ) async {
 
 
@@ -17,7 +13,7 @@ class BuyerService {
 
 
       final response =
-          await apiClient.post(
+          await ApiClient.post(
 
             "/api/buyer-matching",
 
@@ -33,7 +29,7 @@ class BuyerService {
 
 
       throw Exception(
-          "Failed to load buyer matches: $e"
+        "Failed to load buyer matches: $e",
       );
 
 

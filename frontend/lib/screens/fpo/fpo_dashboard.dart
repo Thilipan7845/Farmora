@@ -560,48 +560,54 @@ class _FpoDashboardState extends State<FpoDashboard> {
 
 
   // CROP TILE
-  Widget cropTile(
-    String crop,
-    String quantity,
-    Color iconColor,
-  ) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(13),
-      decoration: BoxDecoration(
-        color: const Color(0xffF5F8F3),
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: iconColor.withOpacity(0.12),
-            child: Icon(
-              Icons.eco_rounded,
-              color: iconColor,
-            ),
+  // CROP TILE
+Widget cropTile(
+  String crop,
+  String quantity,
+  Color iconColor,
+) {
+  return Container(
+    margin: const EdgeInsets.only(bottom: 10),
+    padding: const EdgeInsets.all(13),
+    decoration: BoxDecoration(
+      color: const Color(0xffF5F8F3),
+      borderRadius: BorderRadius.circular(15),
+    ),
+    child: Row(
+      children: [
+        CircleAvatar(
+          backgroundColor: iconColor.withValues(
+            alpha: 0.12,
           ),
-          const SizedBox(width: 13),
-          Expanded(
-            child: Text(
-              crop,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 15,
-              ),
-            ),
+          child: Icon(
+            Icons.eco_rounded,
+            color: iconColor,
           ),
-          Text(
-            quantity,
+        ),
+
+        const SizedBox(width: 13),
+
+        Expanded(
+          child: Text(
+            crop,
             style: const TextStyle(
               fontWeight: FontWeight.bold,
-              color: Color(0xff1B5E20),
+              fontSize: 15,
             ),
           ),
-        ],
-      ),
-    );
-  }
+        ),
+
+        Text(
+          quantity,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Color(0xff1B5E20),
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
 
   // BUYER CARD
@@ -734,7 +740,7 @@ class _FpoDashboardState extends State<FpoDashboard> {
               vertical: 6,
             ),
             decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.12),
+              color: statusColor.withValues(alpha: .12),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
