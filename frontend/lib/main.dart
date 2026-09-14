@@ -1,70 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-
-import 'core/config/supabase_config.dart';
-import 'core/localization/language_controller.dart';
-import 'core/theme/app_theme.dart';
-import 'screens/splash/splash_screen.dart';
+import 'screens/fpo/fpo_dashboard.dart';
 
 
+void main() {
 
-Future<void> main() async {
-
-  WidgetsFlutterBinding.ensureInitialized();
-
-await Supabase.initialize(
-
-  url: SupabaseConfig.url,
-
-  publishableKey: SupabaseConfig.publishableKey,
-
-);
-
-
-  runApp(
-
-    AnimatedBuilder(
-
-      animation: languageController,
-
-      builder: (context, child) {
-
-        return FarmoraApp(
-
-          locale:
-              languageController.locale,
-
-        );
-
-      },
-
-    ),
-
-  );
+  runApp(const FarmoraApp());
 
 }
 
 
-
-
-
 class FarmoraApp extends StatelessWidget {
 
-
-  final Locale locale;
-
-
-
-  const FarmoraApp({
-
-    super.key,
-
-    required this.locale,
-
-  });
-
-
+  const FarmoraApp({super.key});
 
 
   @override
@@ -73,66 +20,45 @@ class FarmoraApp extends StatelessWidget {
 
     return MaterialApp(
 
-
-      debugShowCheckedModeBanner:
-          false,
+      debugShowCheckedModeBanner: false,
 
 
-      title:
-          'Farmora',
+      title: 'Farmora',
 
 
+      theme: ThemeData(
 
-      locale:
-          locale,
-
-
-
-      supportedLocales:
-          const [
-
-        Locale('en'),
-
-        Locale('ta'),
-
-        Locale('mr'),
-
-      ],
+        useMaterial3: true,
 
 
+        colorScheme: ColorScheme.fromSeed(
+
+          seedColor: const Color(0xff315C38),
+
+        ),
 
 
-      localizationsDelegates:
-          const [
+        scaffoldBackgroundColor:
+        const Color(0xffF6F7F2),
 
 
-        GlobalMaterialLocalizations.delegate,
+        appBarTheme: const AppBarTheme(
+
+          elevation: 0,
+
+          backgroundColor: Colors.transparent,
+
+          foregroundColor: Colors.black,
+
+        ),
+
+      ),
 
 
-        GlobalWidgetsLocalizations.delegate,
-
-
-        GlobalCupertinoLocalizations.delegate,
-
-
-      ],
-
-
-
-
-      theme:
-          AppTheme.lightTheme,
-
-
-
-      home:
-          const SplashScreen(),
-
+      home: const FpoDashboard(),
 
     );
 
-
   }
-
 
 }

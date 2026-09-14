@@ -8,14 +8,18 @@ class PaymentService {
   // FARMER PAYMENT SUMMARY
   // ============================================================
 
+
   static Future<Map<String, dynamic>>
-      getFarmerPaymentSummary() async {
+  getFarmerPaymentSummary() async {
 
 
     final response =
         await ApiClient.get(
+
           "/api/payments/farmer",
+
         );
+
 
 
     if(response is Map<String,dynamic>){
@@ -25,11 +29,13 @@ class PaymentService {
     }
 
 
+
     throw Exception(
       "Invalid payment summary response",
     );
 
 
   }
+
 
 }
