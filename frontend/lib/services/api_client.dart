@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 
+
 class ApiClient {
 
 
@@ -11,16 +12,63 @@ class ApiClient {
   // BACKEND URL
   // ============================================================
 
+
   static const String baseUrl =
       "http://127.0.0.1:8000";
 
 
 
+
   // ============================================================
-  // SUPABASE ACCESS TOKEN
+  // FALLBACK TOKEN STORAGE
   // ============================================================
 
+
   static String? accessToken;
+
+
+
+
+
+
+  // ============================================================
+  // GET CURRENT TOKEN
+  // ============================================================
+
+
+  static String? get token {
+
+
+    final session =
+        Supabase.instance.client.auth.currentSession;
+
+
+
+    final supabaseToken =
+        session?.accessToken;
+
+
+
+    if(supabaseToken != null &&
+        supabaseToken.isNotEmpty){
+
+
+      return supabaseToken;
+
+
+    }
+
+
+
+    return accessToken;
+
+
+  }
+
+
+
+
+
 
 
 
@@ -28,15 +76,25 @@ class ApiClient {
   // HEADERS
   // ============================================================
 
-  static Map<String, String> get headers {
+
+  static Map<String,String> get headers {
 
 
-    final session =
-        Supabase.instance.client.auth.currentSession;
+
+    final jwt =
+        token;
 
 
-    final token =
-        session?.accessToken ?? accessToken;
+
+    print("==============================");
+    print("API REQUEST");
+    print(
+      "SESSION EXISTS: ${Supabase.instance.client.auth.currentSession != null}",
+    );
+    print("TOKEN:");
+    print(jwt);
+    print("==============================");
+
 
 
 
@@ -48,10 +106,12 @@ class ApiClient {
 
 
 
-      if(token != null && token.isNotEmpty)
+      if(jwt != null &&
+          jwt.isNotEmpty)
+
 
         "Authorization":
-        "Bearer $token",
+        "Bearer $jwt",
 
 
     };
@@ -63,17 +123,22 @@ class ApiClient {
 
 
 
+
+
+
+
+
   // ============================================================
   // GET
   // ============================================================
 
 
   static Future<dynamic> get(
-      String endpoint
+      String endpoint,
       ) async {
 
 
-    try {
+    try{
 
 
       final response =
@@ -83,7 +148,8 @@ class ApiClient {
           "$baseUrl$endpoint",
         ),
 
-        headers: headers,
+        headers:
+        headers,
 
       ).timeout(
 
@@ -96,18 +162,24 @@ class ApiClient {
       return _handleResponse(response);
 
 
+
     }
 
     catch(e){
+
 
       throw Exception(
         "GET request failed: $e",
       );
 
+
     }
 
 
   }
+
+
+
 
 
 
@@ -131,20 +203,24 @@ class ApiClient {
     try{
 
 
+      print("POST:");
+      print("$baseUrl$endpoint");
+
+
+
       final response =
       await http.post(
-
 
         Uri.parse(
           "$baseUrl$endpoint",
         ),
 
 
-        headers: headers,
+        headers:
+        headers,
 
 
         body:
-
         jsonEncode(body),
 
 
@@ -153,6 +229,14 @@ class ApiClient {
         const Duration(seconds:20),
 
       );
+
+
+
+      print("STATUS:");
+      print(response.statusCode);
+
+      print("BODY:");
+      print(response.body);
 
 
 
@@ -180,6 +264,9 @@ class ApiClient {
 
 
 
+
+
+
   // ============================================================
   // PUT
   // ============================================================
@@ -194,52 +281,36 @@ class ApiClient {
       ) async {
 
 
-    try{
+    final response =
+    await http.put(
+
+      Uri.parse(
+        "$baseUrl$endpoint",
+      ),
 
 
-      final response =
-      await http.put(
+      headers:
+      headers,
 
 
-        Uri.parse(
-          "$baseUrl$endpoint",
-        ),
+      body:
+      jsonEncode(body),
 
 
-        headers: headers,
+    ).timeout(
 
+      const Duration(seconds:20),
 
-        body:
-
-        jsonEncode(body),
-
-
-      ).timeout(
-
-        const Duration(seconds:20),
-
-      );
+    );
 
 
 
-      return _handleResponse(response);
-
-
-
-    }
-
-    catch(e){
-
-
-      throw Exception(
-        "PUT request failed: $e",
-      );
-
-
-    }
+    return _handleResponse(response);
 
 
   }
+
+
 
 
 
@@ -254,52 +325,35 @@ class ApiClient {
 
   static Future<dynamic> delete(
 
-      String endpoint
+      String endpoint,
 
       ) async {
 
 
-    try{
+    final response =
+    await http.delete(
+
+      Uri.parse(
+        "$baseUrl$endpoint",
+      ),
+
+      headers:
+      headers,
 
 
-      final response =
-      await http.delete(
+    ).timeout(
 
+      const Duration(seconds:20),
 
-        Uri.parse(
-          "$baseUrl$endpoint",
-        ),
-
-
-        headers: headers,
-
-
-      ).timeout(
-
-        const Duration(seconds:20),
-
-      );
+    );
 
 
 
-      return _handleResponse(response);
-
-
-
-    }
-
-    catch(e){
-
-
-      throw Exception(
-        "DELETE request failed: $e",
-      );
-
-
-    }
+    return _handleResponse(response);
 
 
   }
+
 
 
 
@@ -314,14 +368,8 @@ class ApiClient {
 
 
   static dynamic _handleResponse(
-
       http.Response response,
-
       ){
-
-
-    final status =
-        response.statusCode;
 
 
 
@@ -337,6 +385,7 @@ class ApiClient {
 
         data =
             jsonDecode(response.body);
+
 
 
       }
@@ -357,10 +406,12 @@ class ApiClient {
 
 
 
-    if(status >= 200 && status < 300){
+    if(response.statusCode >=200 &&
+        response.statusCode <300){
 
 
       return data ?? {};
+
 
     }
 
@@ -369,7 +420,7 @@ class ApiClient {
 
 
     if(data is Map &&
-        data.containsKey("detail")){
+        data["detail"] != null){
 
 
       throw Exception(
@@ -381,10 +432,8 @@ class ApiClient {
 
 
 
-
-
     throw Exception(
-      "Server error: $status",
+      "Server error: ${response.statusCode}",
     );
 
 

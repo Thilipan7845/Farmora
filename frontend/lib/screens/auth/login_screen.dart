@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/localization/app_localizations.dart';
+import '../../core/theme/app_colors.dart';
 import '../../services/auth_service.dart';
 
 import '../farmer/farmer_dashboard_screen.dart';
@@ -14,7 +16,9 @@ import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
 
-  const LoginScreen({super.key});
+  const LoginScreen({
+    super.key,
+  });
 
 
   @override
@@ -28,6 +32,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState
     extends State<LoginScreen> {
+
 
 
   final _formKey =
@@ -45,15 +50,14 @@ class _LoginScreenState
 
   bool obscurePassword = true;
 
-
-
   bool isLoading = false;
 
 
 
 
+
   @override
-  void dispose() {
+  void dispose(){
 
     emailController.dispose();
 
@@ -67,10 +71,12 @@ class _LoginScreenState
 
 
 
+
+
   Future<void> _login() async {
 
 
-    if(!_formKey.currentState!.validate()) {
+    if(!_formKey.currentState!.validate()){
 
       return;
 
@@ -86,10 +92,12 @@ class _LoginScreenState
 
 
 
+
+
     try {
 
 
-      // Supabase Login
+
       await AuthService.login(
 
         emailController.text.trim(),
@@ -100,9 +108,33 @@ class _LoginScreenState
 
 
 
-      // Get role from FastAPI
+
+
+      final session =
+          Supabase.instance.client.auth.currentSession;
+
+
+
+
+      if(session == null ||
+          session.accessToken.isEmpty){
+
+
+        throw Exception(
+          "Authentication session not created",
+        );
+
+
+      }
+
+
+
+
+
       final user =
           await AuthService.getCurrentUser();
+
+
 
 
 
@@ -111,76 +143,88 @@ class _LoginScreenState
 
 
 
+
+
       if(!mounted) return;
 
 
 
-      if(role == "farmer") {
 
 
-        Navigator.pushReplacement(
-
-          context,
-
-          MaterialPageRoute(
-
-            builder: (_) =>
-                const FarmerDashboardScreen(),
-
-          ),
-
-        );
+      switch(role){
 
 
-      }
+        case "farmer":
 
 
-      else if(role == "fpo") {
+          Navigator.pushReplacement(
+
+            context,
+
+            MaterialPageRoute(
+
+              builder: (_) =>
+              const FarmerDashboardScreen(),
+
+            ),
+
+          );
 
 
-        Navigator.pushReplacement(
-
-          context,
-
-          MaterialPageRoute(
-
-            builder: (_) =>
-                const FpoDashboardScreen(),
-
-          ),
-
-        );
+          break;
 
 
-      }
 
 
-      else if(role == "buyer") {
+        case "fpo":
 
 
-        Navigator.pushReplacement(
+          Navigator.pushReplacement(
 
-          context,
+            context,
 
-          MaterialPageRoute(
+            MaterialPageRoute(
 
-            builder: (_) =>
-                const BuyerDashboardScreen(),
+              builder: (_) =>
+              const FpoDashboardScreen(),
 
-          ),
+            ),
 
-        );
-
-
-      }
+          );
 
 
-      else {
+          break;
 
 
-        throw Exception(
-          "Invalid user role",
-        );
+
+
+        case "buyer":
+
+
+          Navigator.pushReplacement(
+
+            context,
+
+            MaterialPageRoute(
+
+              builder: (_) =>
+              const BuyerDashboardScreen(),
+
+            ),
+
+          );
+
+
+          break;
+
+
+
+
+        default:
+
+          throw Exception(
+            "Invalid user role",
+          );
 
 
       }
@@ -189,7 +233,12 @@ class _LoginScreenState
 
     }
 
-    catch(e) {
+
+    catch(e){
+
+
+      if(!mounted) return;
+
 
 
       ScaffoldMessenger.of(context)
@@ -198,9 +247,9 @@ class _LoginScreenState
         SnackBar(
 
           content:
-              Text(
-                e.toString(),
-              ),
+          Text(
+            e.toString(),
+          ),
 
         ),
 
@@ -210,7 +259,8 @@ class _LoginScreenState
     }
 
 
-    finally {
+
+    finally{
 
 
       if(mounted){
@@ -221,6 +271,7 @@ class _LoginScreenState
 
         });
 
+
       }
 
 
@@ -234,444 +285,692 @@ class _LoginScreenState
 
 
 
+
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context){
 
 
-    final localizations =
-        AppLocalizations.of(context);
+
+    final local =
+    AppLocalizations.of(context);
 
 
 
     return Scaffold(
 
+
+
       backgroundColor:
-          const Color(0xFFF7FAF7),
+      AppColors.background,
 
 
 
-      body: SafeArea(
+      body:
+
+      SafeArea(
+
+
 
         child:
-        SingleChildScrollView(
+
+        LayoutBuilder(
 
 
-          padding:
-              const EdgeInsets.symmetric(
-                horizontal:24,
+
+          builder:(context,constraints){
+
+
+
+            final desktop =
+                constraints.maxWidth > 700;
+
+
+
+
+
+            return Center(
+
+
+
+              child:
+
+              SingleChildScrollView(
+
+
+
+                padding:
+
+                EdgeInsets.symmetric(
+
+                  horizontal:
+
+                  desktop ? 0 : 24,
+
+                  vertical:40,
+
+                ),
+
+
+
+
+                child:
+
+                Container(
+
+
+
+                  width:
+
+                  desktop ? 450 : double.infinity,
+
+
+
+
+                  padding:
+
+                  const EdgeInsets.all(32),
+
+
+
+
+
+                  decoration:
+
+                  BoxDecoration(
+
+
+
+                    color:
+                    Colors.white,
+
+
+
+                    borderRadius:
+                    BorderRadius.circular(28),
+
+
+
+                    boxShadow:[
+
+
+                      BoxShadow(
+
+                        color:
+                        Colors.black
+                            .withValues(
+                          alpha:0.06,
+                        ),
+
+
+                        blurRadius:25,
+
+
+                        offset:
+                        const Offset(
+                          0,
+                          10,
+                        ),
+
+
+                      )
+
+                    ],
+
+
+                  ),
+
+
+
+
+
+                  child:
+
+                  Form(
+
+
+
+                    key:
+                    _formKey,
+
+
+
+                    child:
+
+                    Column(
+
+
+
+                      mainAxisSize:
+                      MainAxisSize.min,
+
+
+
+                      children:[
+
+
+
+
+                        Image.asset(
+
+                          "assets/farmora_logo.png",
+
+                          height:110,
+
+                        ),
+
+
+
+
+                        const SizedBox(
+                          height:24,
+                        ),
+
+
+
+
+                        Text(
+
+
+                          local.welcome,
+
+
+                          textAlign:
+                          TextAlign.center,
+
+
+                          style:
+
+                          const TextStyle(
+
+                            fontSize:30,
+
+                            fontWeight:
+                            FontWeight.bold,
+
+                            color:
+                            AppColors.textPrimary,
+
+                          ),
+
+
+                        ),
+
+
+
+
+
+                        const SizedBox(
+                          height:8,
+                        ),
+
+
+
+
+
+                        Text(
+
+
+                          local.loginSubtitle,
+
+
+                          textAlign:
+                          TextAlign.center,
+
+
+                          style:
+
+                          const TextStyle(
+
+                            color:
+                            AppColors.textSecondary,
+
+                          ),
+
+
+                        ),
+
+
+
+
+
+                        const SizedBox(
+                          height:35,
+                        ),
+
+
+
+
+
+                        TextFormField(
+
+
+
+                          controller:
+                          emailController,
+
+
+
+                          keyboardType:
+                          TextInputType.emailAddress,
+
+
+
+                          decoration:
+
+                          InputDecoration(
+
+
+
+                            hintText:
+                            local.emailHint,
+
+
+
+                            prefixIcon:
+                            const Icon(
+                              Icons.email_outlined,
+                            ),
+
+
+
+                            filled:true,
+
+
+
+                            fillColor:
+                            AppColors.background,
+
+
+
+                            border:
+
+                            OutlineInputBorder(
+
+                              borderRadius:
+                              BorderRadius.circular(16),
+
+
+                              borderSide:
+                              BorderSide.none,
+
+                            ),
+
+
+
+                          ),
+
+
+
+
+                          validator:(value){
+
+
+                            if(value == null ||
+                                value.isEmpty){
+
+                              return local.enterEmail;
+
+                            }
+
+
+                            return null;
+
+                          },
+
+
+
+                        ),
+
+
+
+
+
+                        const SizedBox(
+                          height:20,
+                        ),
+
+
+
+
+
+
+                        TextFormField(
+
+
+
+                          controller:
+                          passwordController,
+
+
+
+                          obscureText:
+                          obscurePassword,
+
+
+
+                          decoration:
+
+                          InputDecoration(
+
+
+
+                            hintText:
+                            local.passwordHint,
+
+
+
+                            prefixIcon:
+                            const Icon(
+                              Icons.lock_outline,
+                            ),
+
+
+
+                            suffixIcon:
+
+                            IconButton(
+
+
+                              icon:
+
+                              Icon(
+
+                                obscurePassword
+
+                                    ?
+
+                                Icons.visibility_outlined
+
+                                    :
+
+                                Icons.visibility_off_outlined,
+
+                              ),
+
+
+
+                              onPressed:(){
+
+
+                                setState(() {
+
+                                  obscurePassword =
+                                  !obscurePassword;
+
+
+                                });
+
+
+                              },
+
+                            ),
+
+
+
+                            filled:true,
+
+
+                            fillColor:
+                            AppColors.background,
+
+
+
+                            border:
+
+                            OutlineInputBorder(
+
+                              borderRadius:
+                              BorderRadius.circular(16),
+
+                              borderSide:
+                              BorderSide.none,
+
+                            ),
+
+
+
+                          ),
+
+
+
+
+
+                          validator:(value){
+
+
+                            if(value == null ||
+                                value.length < 6){
+
+
+                              return local.passwordLength;
+
+
+                            }
+
+
+                            return null;
+
+
+                          },
+
+
+
+                        ),
+
+
+
+
+
+
+
+                        Align(
+
+
+
+                          alignment:
+                          Alignment.centerRight,
+
+
+
+                          child:
+
+                          TextButton(
+
+
+
+                            onPressed:(){
+
+
+
+                              Navigator.push(
+
+                                context,
+
+                                MaterialPageRoute(
+
+                                  builder:(_)=>
+
+                                  const ForgotPasswordScreen(),
+
+                                ),
+
+                              );
+
+
+                            },
+
+
+
+                            child:
+
+                            Text(
+                              local.forgotPassword,
+                            ),
+
+
+                          ),
+
+
+                        ),
+
+
+
+
+
+                        const SizedBox(
+                          height:10,
+                        ),
+
+
+
+
+
+
+                        SizedBox(
+
+
+
+                          width:
+                          double.infinity,
+
+
+
+                          height:
+                          54,
+
+
+
+                          child:
+
+                          ElevatedButton(
+
+
+
+                            onPressed:
+
+                            isLoading
+                                ?
+                            null
+                                :
+                            _login,
+
+
+
+                            child:
+
+                            isLoading
+
+                                ?
+
+                            const CircularProgressIndicator(
+                              color:Colors.white,
+                            )
+
+                                :
+
+                            Text(
+                              local.login,
+                            ),
+
+
+
+                          ),
+
+
+
+                        ),
+
+
+
+
+
+
+                        const SizedBox(
+                          height:25,
+                        ),
+
+
+
+
+
+
+                        TextButton(
+
+
+
+                          onPressed:(){
+
+
+
+                            Navigator.push(
+
+                              context,
+
+                              MaterialPageRoute(
+
+                                builder:(_)=>
+
+                                const RegisterScreen(),
+
+                              ),
+
+                            );
+
+
+                          },
+
+
+
+                          child:
+
+                          Text(
+
+                            '${local.noAccount} ${local.createAccount}',
+
+                          ),
+
+
+
+                        )
+
+
+
+
+                      ],
+
+
+                    ),
+
+
+
+                  ),
+
+
+
+                ),
+
+
               ),
 
 
+            );
 
-          child:
-          Form(
 
-            key:
-                _formKey,
-
-
-
-            child:
-            Column(
-
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
-
-
-              children:[
-
-
-                const SizedBox(height:55),
-
-
-
-                Center(
-
-                  child:
-                  Container(
-
-                    width:75,
-
-                    height:75,
-
-
-                    decoration:
-                    BoxDecoration(
-
-                      color:
-                      const Color(0xFFE8F5E9),
-
-                      borderRadius:
-                      BorderRadius.circular(22),
-
-                    ),
-
-
-                    child:
-                    const Icon(
-
-                      Icons.eco_rounded,
-
-                      size:42,
-
-                      color:
-                      Color(0xFF2E7D32),
-
-                    ),
-
-                  ),
-
-                ),
-
-
-
-
-                const SizedBox(height:28),
-
-
-
-
-                Center(
-
-                  child:
-                  Text(
-
-                    localizations.welcome,
-
-                    style:
-                    const TextStyle(
-
-                      fontSize:27,
-
-                      fontWeight:
-                      FontWeight.bold,
-
-                    ),
-
-                  ),
-
-                ),
-
-
-
-
-                const SizedBox(height:45),
-
-
-
-
-                TextFormField(
-
-                  controller:
-                      emailController,
-
-
-                  decoration:
-                  InputDecoration(
-
-                    hintText:
-                    localizations.emailHint,
-
-
-                    prefixIcon:
-                    const Icon(
-                        Icons.email_outlined),
-
-
-                    filled:true,
-
-                    fillColor:
-                    Colors.white,
-
-
-                    border:
-                    OutlineInputBorder(
-
-                      borderRadius:
-                      BorderRadius.circular(14),
-
-                      borderSide:
-                      BorderSide.none,
-
-                    ),
-
-                  ),
-
-
-
-                  validator:(value){
-
-                    if(value==null ||
-                        value.isEmpty){
-
-                      return localizations.enterEmail;
-
-                    }
-
-
-                    return null;
-
-                  },
-
-                ),
-
-
-
-
-
-                const SizedBox(height:22),
-
-
-
-
-
-                TextFormField(
-
-                  controller:
-                      passwordController,
-
-
-                  obscureText:
-                      obscurePassword,
-
-
-
-                  decoration:
-                  InputDecoration(
-
-                    hintText:
-                    localizations.passwordHint,
-
-
-                    prefixIcon:
-                    const Icon(
-                        Icons.lock_outline),
-
-
-
-                    suffixIcon:
-                    IconButton(
-
-                      icon:
-                      Icon(
-
-                        obscurePassword
-
-                            ?
-                        Icons.visibility_outlined
-
-                            :
-                        Icons.visibility_off_outlined,
-
-                      ),
-
-
-
-                      onPressed:(){
-
-                        setState(() {
-
-                          obscurePassword =
-                              !obscurePassword;
-
-                        });
-
-
-                      },
-
-
-                    ),
-
-
-                    filled:true,
-
-                    fillColor:
-                    Colors.white,
-
-
-                    border:
-                    OutlineInputBorder(
-
-                      borderRadius:
-                      BorderRadius.circular(14),
-
-                      borderSide:
-                      BorderSide.none,
-
-                    ),
-
-                  ),
-
-
-
-                  validator:(value){
-
-                    if(value==null ||
-                        value.length < 6){
-
-                      return localizations.passwordLength;
-
-                    }
-
-
-                    return null;
-
-                  },
-
-                ),
-
-
-
-
-
-                Align(
-
-                  alignment:
-                  Alignment.centerRight,
-
-
-                  child:
-                  TextButton(
-
-                    onPressed:(){
-
-                      Navigator.push(
-
-                        context,
-
-                        MaterialPageRoute(
-
-                          builder:(_)=>
-                          const ForgotPasswordScreen(),
-
-                        ),
-
-                      );
-
-                    },
-
-
-                    child:
-                    Text(
-                      localizations.forgotPassword,
-                    ),
-
-                  ),
-
-                ),
-
-
-
-
-
-                const SizedBox(height:18),
-
-
-
-
-
-                SizedBox(
-
-                  width:
-                  double.infinity,
-
-
-                  height:
-                  54,
-
-
-                  child:
-                  ElevatedButton(
-
-
-                    onPressed:
-                    isLoading
-                        ?
-                        null
-                        :
-                    _login,
-
-
-
-                    child:
-                    isLoading
-
-                        ?
-                    const CircularProgressIndicator(
-                      color:Colors.white,
-                    )
-
-                        :
-                    Text(
-                      localizations.login,
-                    ),
-
-
-                  ),
-
-                ),
-
-
-
-
-
-
-                const SizedBox(height:28),
-
-
-
-
-
-                Center(
-
-                  child:
-                  TextButton(
-
-                    onPressed:(){
-
-                      Navigator.push(
-
-                        context,
-
-                        MaterialPageRoute(
-
-                          builder:(_)=>
-                          const RegisterScreen(),
-
-                        ),
-
-                      );
-
-                    },
-
-
-                    child:
-                    Text(
-
-                      '${localizations.noAccount} ${localizations.createAccount}',
-
-                    ),
-
-                  ),
-
-                ),
-
-
-
-              ],
-
-            ),
-
-          ),
+          },
 
 
         ),
 
+
       ),
+
 
     );
 
+
   }
+
 
 
 }

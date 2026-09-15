@@ -1,27 +1,46 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../core/localization/app_localizations.dart';
+
+import '../../core/theme/app_colors.dart';
+
+
+import '../../widgets/farmora_register_hero.dart';
+import '../../widgets/register_input_field.dart';
+import '../../widgets/terms_checkbox.dart';
+import '../../widgets/terms_condition_dialog.dart';
+
+
 import '../role_registration/role_registration_screen.dart';
-import 'terms_pdf_screen.dart';
+
 
 
 class RegisterScreen extends StatefulWidget {
 
+
   final String? prefilledEmail;
 
 
+
   const RegisterScreen({
+
     super.key,
+
     this.prefilledEmail,
+
   });
+
 
 
   @override
   State<RegisterScreen> createState() =>
       _RegisterScreenState();
 
+
 }
+
+
+
 
 
 
@@ -29,67 +48,88 @@ class _RegisterScreenState
     extends State<RegisterScreen> {
 
 
+
   final _formKey =
       GlobalKey<FormState>();
 
 
-  late final TextEditingController
-      _emailController;
+
+  late TextEditingController emailController;
 
 
-  final _nameController =
-      TextEditingController();
-
-
-  final _mobileController =
-      TextEditingController();
-
-
-  final _passwordController =
-      TextEditingController();
-
-
-  final _confirmPasswordController =
+  final nameController =
       TextEditingController();
 
 
 
-  bool _obscurePassword = true;
+  final mobileController =
+      TextEditingController();
 
-  bool _obscureConfirmPassword = true;
 
 
-  bool _termsAccepted = false;
+  final passwordController =
+      TextEditingController();
+
+
+
+  final confirmPasswordController =
+      TextEditingController();
+
+
+
+
+
+  bool obscurePassword = true;
+
+  bool obscureConfirmPassword = true;
+
+
+  bool termsAccepted = false;
+
+
+  bool loading = false;
+
+
+
+
 
 
 
   @override
-  void initState() {
+  void initState(){
 
     super.initState();
 
 
-    _emailController =
+    emailController =
         TextEditingController(
-      text: widget.prefilledEmail ?? '',
-    );
+
+          text:
+          widget.prefilledEmail ?? '',
+
+        );
+
 
   }
 
 
 
+
+
   @override
-  void dispose() {
+  void dispose(){
 
-    _emailController.dispose();
 
-    _nameController.dispose();
+    emailController.dispose();
 
-    _mobileController.dispose();
+    nameController.dispose();
 
-    _passwordController.dispose();
+    mobileController.dispose();
 
-    _confirmPasswordController.dispose();
+    passwordController.dispose();
+
+    confirmPasswordController.dispose();
+
 
     super.dispose();
 
@@ -98,36 +138,35 @@ class _RegisterScreenState
 
 
 
-  Future<void> _openTerms() async {
+
+
+
+  Future<void> openTerms() async {
+
 
 
     final accepted =
-        await Navigator.push<bool>(
+    await showTermsConditionDialog(
       context,
-
-      MaterialPageRoute(
-
-        builder: (_) =>
-            const TermsPdfScreen(),
-
-      ),
-
     );
-
-
-    if(!mounted) return;
 
 
 
     if(accepted == true){
 
+
       setState(() {
 
-        _termsAccepted = true;
+
+        termsAccepted = true;
+
 
       });
 
+
     }
+
+
 
   }
 
@@ -135,7 +174,10 @@ class _RegisterScreenState
 
 
 
-  void _createAccount(){
+
+
+  Future<void> createAccount() async {
+
 
 
     if(!_formKey.currentState!.validate()){
@@ -146,19 +188,24 @@ class _RegisterScreenState
 
 
 
-    if(!_termsAccepted){
+
+    if(!termsAccepted){
 
 
       ScaffoldMessenger.of(context)
           .showSnackBar(
 
+
         const SnackBar(
 
-          content: Text(
-            'Please read and accept the Terms & Conditions.',
+          content:
+
+          Text(
+            "Please accept Terms & Conditions",
           ),
 
         ),
+
 
       );
 
@@ -169,26 +216,169 @@ class _RegisterScreenState
 
 
 
-    // Next step:
-    // Role based registration
-    //
-    // Farmer Registration
-    // FPO Registration
-    // Buyer Registration
 
 
-    Navigator.pushReplacement(
+    setState(() {
 
-      context,
 
-      MaterialPageRoute(
+      loading = true;
 
-        builder: (_) =>
-            const RoleRegistrationScreen(),
 
-      ),
+    });
 
-    );
+
+
+
+
+    try{
+
+
+
+      final response =
+
+      await Supabase.instance.client.auth.signUp(
+
+
+
+        email:
+
+        emailController.text.trim(),
+
+
+
+        password:
+
+        passwordController.text.trim(),
+
+
+
+        data:{
+
+
+          "full_name":
+
+          nameController.text.trim(),
+
+
+
+          "phone":
+
+          mobileController.text.trim(),
+
+
+
+        },
+
+
+      );
+
+
+
+
+
+
+      if(response.session == null){
+
+
+        throw Exception(
+
+          "Account created. Please verify email.",
+
+        );
+
+
+      }
+
+
+
+
+
+
+
+      if(!mounted) return;
+
+
+
+
+
+
+      Navigator.pushReplacement(
+
+
+        context,
+
+
+        MaterialPageRoute(
+
+
+          builder:(_)=>
+
+          const RoleRegistrationScreen(),
+
+
+        ),
+
+
+      );
+
+
+
+
+    }
+
+    catch(e){
+
+
+      if(!mounted) return;
+
+
+
+      ScaffoldMessenger.of(context)
+          .showSnackBar(
+
+
+        SnackBar(
+
+          content:
+
+          Text(
+
+            e.toString(),
+
+          ),
+
+
+        ),
+
+
+      );
+
+
+    }
+
+
+
+
+    finally{
+
+
+      if(mounted){
+
+
+        setState(() {
+
+
+          loading = false;
+
+
+        });
+
+
+      }
+
+
+    }
+
 
 
   }
@@ -198,299 +388,143 @@ class _RegisterScreenState
 
 
 
+
+
+
+
   @override
-  Widget build(BuildContext context) {
-
-
-    final local =
-        AppLocalizations.of(context);
+  Widget build(BuildContext context){
 
 
 
     return Scaffold(
 
-      appBar: AppBar(
 
-        title:
-            Text(local.registerTitle),
 
-        centerTitle: true,
+      backgroundColor:
 
-      ),
+      AppColors.background,
 
 
 
-      body: SafeArea(
 
-        child: Form(
-
-          key: _formKey,
+      body:
 
 
-          child: SingleChildScrollView(
+      SafeArea(
 
-            padding:
+
+
+        child:
+
+
+        LayoutBuilder(
+
+
+
+          builder:(context,constraints){
+
+
+
+            final desktop =
+
+            constraints.maxWidth > 800;
+
+
+
+
+
+            return Center(
+
+
+
+              child:
+
+              SingleChildScrollView(
+
+
+
+                padding:
+
                 const EdgeInsets.all(24),
 
 
-            child: Column(
 
 
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
-
-
-              children: [
-
-
-                Text(
-
-                  local.registerTitle,
-
-                  style:
-                      const TextStyle(
-
-                    fontSize: 30,
-
-                    fontWeight:
-                        FontWeight.bold,
-
-                  ),
-
-                ),
-
-
-
-                const SizedBox(height:8),
-
-
-
-                Text(
-
-                  local.registerSubtitle,
-
-                  style:
-
-                      TextStyle(
-
-                    fontSize:16,
-
-                    color:
-                        Colors.grey.shade600,
-
-                  ),
-
-                ),
-
-
-
-
-                const SizedBox(height:28),
-
-
-
-                _field(
-
-                  controller:
-                      _nameController,
-
-                  label:
-                      local.fullName,
-
-                  hint:
-                      local.fullNameHint,
-
-                  icon:
-                      Icons.person_outline,
-
-                ),
-
-
-
-
-                _field(
-
-                  controller:
-                      _mobileController,
-
-                  label:
-                      local.mobileNumber,
-
-                  hint:
-                      local.mobileHint,
-
-                  icon:
-                      Icons.phone_outlined,
-
-                  keyboardType:
-                      TextInputType.phone,
-
-                ),
-
-
-
-
-
-                _field(
-
-                  controller:
-                      _emailController,
-
-                  label:
-                      "Email",
-
-                  hint:
-                      "Enter your email",
-
-                  icon:
-                      Icons.email_outlined,
-
-                  keyboardType:
-                      TextInputType.emailAddress,
-
-                ),
-
-
-
-
-
-                _passwordField(),
-
-
-
-
-
-                _confirmPasswordField(),
-
-
-
-
-                const SizedBox(height:20),
-
-
-
+                child:
 
                 Container(
 
+
+
+                  width:
+
+                  desktop
+
+                      ?
+
+                  520
+
+                      :
+
+                  double.infinity,
+
+
+
+
+
                   padding:
-                      const EdgeInsets.all(14),
+
+                  const EdgeInsets.all(28),
+
+
 
 
                   decoration:
-                      BoxDecoration(
-
-                    borderRadius:
-                        BorderRadius.circular(14),
 
 
-                    border:
-                        Border.all(
+                  BoxDecoration(
 
-                      color:
-                      _termsAccepted
 
-                          ? Theme.of(context)
-                          .colorScheme
-                          .primary
 
-                          :
-                      Colors.grey.shade300,
+                    color:
 
-                    ),
+                    Colors.white,
 
-                  ),
 
 
 
-                  child: Row(
+                    borderRadius:
 
-                    children:[
-
-
-
-                      Checkbox(
-
-                        value:
-                            _termsAccepted,
-
-                        onChanged:
-                            null,
-
-                      ),
+                    BorderRadius.circular(30),
 
 
 
-                      Expanded(
 
-                        child:
-                        RichText(
-
-                          text:
-                          TextSpan(
-
-                            style:
-                            Theme.of(context)
-                            .textTheme
-                            .bodyMedium,
-
-
-                            children:[
-
-
-                              TextSpan(
-
-                                text:
-                                '${local.terms} ',
-
-                              ),
+                    boxShadow:[
 
 
 
-                              TextSpan(
-
-                                text:
-                                local.agreeTerms,
-
-
-                                style:
-                                TextStyle(
-
-                                  color:
-                                  Theme.of(context)
-                                  .colorScheme
-                                  .primary,
-
-
-                                  fontWeight:
-                                  FontWeight.bold,
-
-
-                                  decoration:
-                                  TextDecoration.underline,
-
-                                ),
+                      BoxShadow(
 
 
 
-                                recognizer:
-                                TapGestureRecognizer()
+                        color:
 
-                                  ..onTap =
-                                      _openTerms,
+                        Colors.black
 
+                            .withValues(
 
-                              ),
-
-
-                            ],
-
-
-                          ),
-
+                          alpha:0.06,
 
                         ),
 
-                      ),
+
+
+
+                        blurRadius:30,
+
+                      )
 
 
                     ],
@@ -499,351 +533,633 @@ class _RegisterScreenState
                   ),
 
 
-                ),
-
-
-
-
-
-                const SizedBox(height:10),
-
-
-
-
-                SizedBox(
-
-                  width:
-                      double.infinity,
 
 
                   child:
-                  TextButton.icon(
-
-                    onPressed:
-                        _openTerms,
 
 
-                    icon:
-                    const Icon(
-                        Icons.description_outlined),
-
-
-                    label:
-                    const Text(
-                      'Read Terms & Conditions',
-                    ),
-
-
-                  ),
-
-                ),
+                  Form(
 
 
 
+                    key:
 
-                const SizedBox(height:18),
+                    _formKey,
 
-
-
-
-                SizedBox(
-
-                  width:
-                      double.infinity,
-
-
-                  height:
-                      54,
-
-
-                  child:
-                  ElevatedButton(
-
-                    onPressed:
-                    _termsAccepted
-
-                        ? _createAccount
-
-                        : null,
 
 
 
                     child:
-                    Text(
 
-                      local.createAccountButton,
+
+                    Column(
+
+
+
+                      children:[
+
+
+
+
+
+                        const FarmoraRegisterHero(),
+
+
+
+
+                        const SizedBox(
+
+                          height:30,
+
+                        ),
+
+
+
+
+
+
+                        RegisterInputField(
+
+
+
+                          controller:
+
+                          nameController,
+
+
+
+                          label:
+
+                          "Full Name",
+
+
+
+                          icon:
+
+                          Icons.person_outline,
+
+
+
+                          validator:(v){
+
+
+
+                            if(v == null ||
+
+                                v.trim().isEmpty){
+
+
+                              return "Enter name";
+
+
+                            }
+
+
+                            return null;
+
+
+                          },
+
+
+                        ),
+
+
+
+
+
+
+                        const SizedBox(
+
+                          height:16,
+
+                        ),
+
+
+
+
+
+
+                        RegisterInputField(
+
+
+
+                          controller:
+
+                          mobileController,
+
+
+
+                          label:
+
+                          "Mobile Number",
+
+
+
+                          icon:
+
+                          Icons.phone_outlined,
+
+
+
+                          keyboardType:
+
+                          TextInputType.phone,
+
+
+                        ),
+
+
+
+
+
+
+
+                        const SizedBox(
+
+                          height:16,
+
+                        ),
+
+
+
+
+
+
+
+                        RegisterInputField(
+
+
+
+                          controller:
+
+                          emailController,
+
+
+
+                          label:
+
+                          "Email",
+
+
+
+                          icon:
+
+                          Icons.email_outlined,
+
+
+
+                          keyboardType:
+
+                          TextInputType.emailAddress,
+
+
+
+                          validator:(v){
+
+
+                            if(v == null ||
+
+                                v.isEmpty){
+
+
+                              return "Enter email";
+
+
+                            }
+
+
+                            return null;
+
+
+                          },
+
+
+                        ),
+
+
+
+
+
+
+
+
+                        const SizedBox(
+
+                          height:16,
+
+                        ),
+
+
+
+
+
+
+                        RegisterInputField(
+
+
+
+                          controller:
+
+                          passwordController,
+
+
+
+                          label:
+
+                          "Password",
+
+
+
+                          icon:
+
+                          Icons.lock_outline,
+
+
+
+                          obscure:
+
+                          obscurePassword,
+
+
+
+                          suffix:
+
+                          IconButton(
+
+
+                            icon:
+
+                            Icon(
+
+                              obscurePassword
+
+                                  ?
+
+                              Icons.visibility
+
+                                  :
+
+                              Icons.visibility_off,
+
+                            ),
+
+
+
+                            onPressed:(){
+
+
+                              setState((){
+
+
+                                obscurePassword =
+
+                                !obscurePassword;
+
+
+                              });
+
+
+                            },
+
+
+
+                          ),
+
+
+
+
+                          validator:(v){
+
+
+
+                            if(v == null ||
+
+                                v.length < 6){
+
+
+                              return
+
+                                  "Minimum 6 characters";
+
+
+                            }
+
+
+                            return null;
+
+
+                          },
+
+
+
+                        ),
+
+
+
+
+
+
+                        const SizedBox(
+
+                          height:16,
+
+                        ),
+
+
+
+
+
+
+
+                        RegisterInputField(
+
+
+
+                          controller:
+
+                          confirmPasswordController,
+
+
+
+                          label:
+
+                          "Confirm Password",
+
+
+
+                          icon:
+
+                          Icons.lock_reset,
+
+
+
+                          obscure:
+
+                          obscureConfirmPassword,
+
+
+
+
+                          suffix:
+
+                          IconButton(
+
+
+                            icon:
+
+                            Icon(
+
+                              obscureConfirmPassword
+
+                                  ?
+
+                              Icons.visibility
+
+                                  :
+
+                              Icons.visibility_off,
+
+                            ),
+
+
+
+
+                            onPressed:(){
+
+
+
+                              setState((){
+
+
+                                obscureConfirmPassword =
+
+                                !obscureConfirmPassword;
+
+
+                              });
+
+
+                            },
+
+
+
+                          ),
+
+
+
+
+                          validator:(v){
+
+
+
+                            if(v != passwordController.text){
+
+
+                              return "Password mismatch";
+
+
+                            }
+
+
+                            return null;
+
+
+                          },
+
+
+
+                        ),
+
+
+
+
+
+
+                        const SizedBox(
+
+                          height:20,
+
+                        ),
+
+
+
+
+
+
+
+                        TermsCheckbox(
+
+
+
+                          accepted:
+
+                          termsAccepted,
+
+
+
+                          onTap:(){
+
+
+
+                            setState((){
+
+
+                              termsAccepted =
+
+                              !termsAccepted;
+
+
+                            });
+
+
+
+                          },
+
+
+
+                          onTermsTap:
+
+                          openTerms,
+
+
+                        ),
+
+
+
+
+
+
+
+                        const SizedBox(
+
+                          height:25,
+
+                        ),
+
+
+
+
+
+
+
+
+                        SizedBox(
+
+
+
+                          width:
+
+                          double.infinity,
+
+
+
+                          height:
+
+                          55,
+
+
+
+                          child:
+
+
+                          ElevatedButton(
+
+
+
+                            onPressed:
+
+                            loading
+
+                                ?
+
+                            null
+
+                                :
+
+                            createAccount,
+
+
+
+                            child:
+
+                            loading
+
+                                ?
+
+                            const CircularProgressIndicator(
+
+                              color:
+
+                              Colors.white,
+
+                            )
+
+
+                                :
+
+                            const Text(
+
+                              "Create Account",
+
+                              style:
+
+                              TextStyle(
+
+                                fontSize:16,
+
+                                fontWeight:
+
+                                FontWeight.bold,
+
+                              ),
+
+                            ),
+
+
+
+                          ),
+
+
+
+                        ),
+
+
+
+                      ],
+
+
 
                     ),
 
 
+
                   ),
+
+
 
                 ),
 
 
-              ],
 
+              ),
 
-            ),
 
 
-          ),
+            );
 
 
-        ),
-
-
-      ),
-
-
-    );
-
-  }
-
-
-
-
-
-
-  Widget _field({
-
-    required TextEditingController controller,
-
-    required String label,
-
-    required String hint,
-
-    required IconData icon,
-
-    TextInputType? keyboardType,
-
-
-  }){
-
-
-    return Padding(
-
-      padding:
-          const EdgeInsets.only(bottom:16),
-
-
-      child:
-      TextFormField(
-
-        controller:
-            controller,
-
-
-        keyboardType:
-            keyboardType,
-
-
-        decoration:
-        InputDecoration(
-
-          labelText:
-              label,
-
-
-          hintText:
-              hint,
-
-
-          prefixIcon:
-              Icon(icon),
-
-
-          border:
-          OutlineInputBorder(
-
-            borderRadius:
-            BorderRadius.circular(14),
-
-          ),
-
-        ),
-
-
-
-        validator:(value){
-
-          if(value==null ||
-              value.trim().isEmpty){
-
-            return
-            "Please enter $label";
-
-          }
-
-
-          return null;
-
-        },
-
-
-      ),
-
-    );
-
-
-  }
-
-
-
-
-
-
-  Widget _passwordField(){
-
-    return TextFormField(
-
-      controller:
-          _passwordController,
-
-
-      obscureText:
-          _obscurePassword,
-
-
-      decoration:
-      InputDecoration(
-
-        labelText:
-            "Password",
-
-
-        prefixIcon:
-            const Icon(
-                Icons.lock_outline),
-
-
-        suffixIcon:
-        IconButton(
-
-          icon:
-          Icon(
-
-            _obscurePassword
-
-                ?
-            Icons.visibility
-
-                :
-            Icons.visibility_off,
-
-          ),
-
-
-          onPressed:(){
-
-            setState((){
-
-              _obscurePassword =
-                  !_obscurePassword;
-
-            });
 
           },
 
 
-        ),
-
-
-        border:
-        OutlineInputBorder(
-
-          borderRadius:
-          BorderRadius.circular(14),
 
         ),
+
+
 
       ),
 
 
-      validator:(value){
-
-        if(value==null ||
-            value.length<6){
-
-          return
-          "Password must contain 6 characters";
-
-        }
-
-        return null;
-
-      },
-
-
-    );
-
-  }
-
-
-
-
-
-
-  Widget _confirmPasswordField(){
-
-
-    return Padding(
-
-      padding:
-      const EdgeInsets.only(top:16),
-
-
-      child:
-      TextFormField(
-
-        controller:
-        _confirmPasswordController,
-
-
-        obscureText:
-        _obscureConfirmPassword,
-
-
-        decoration:
-        InputDecoration(
-
-          labelText:
-          "Confirm Password",
-
-
-          prefixIcon:
-          const Icon(
-              Icons.lock_reset),
-
-
-          border:
-          OutlineInputBorder(
-
-            borderRadius:
-            BorderRadius.circular(14),
-
-          ),
-
-        ),
-
-
-        validator:(value){
-
-          if(value !=
-              _passwordController.text){
-
-            return
-            "Password mismatch";
-
-          }
-
-
-          return null;
-
-        },
-
-
-      ),
 
     );
 
