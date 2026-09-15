@@ -1,10 +1,10 @@
 class SupabaseConfig {
 
   static const String url =
-      "YOUR_SUPABASE_URL";
+      "https://awidfdmoawvodrlqkxlf.supabase.co";
 
 
   static const String publishableKey =
-      "YOUR_SUPABASE_PUBLISHABLE_KEY";
+      "sb_publishable_C2MQZNFkaMq9UiX2V1beeQ_bGFetUOQ";
 
 }
