@@ -482,3 +482,36 @@ def create_negotiation(
         "message": "Negotiation created successfully",
         "negotiation": result.data[0],
     }
+# ============================================================
+# ACCEPT OFFER
+# ============================================================
+
+@router.put("/{offer_id}/accept")
+def accept_offer(
+    offer_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+
+    return update_offer_status(
+        offer_id,
+        "accepted",
+        current_user
+    )
+
+
+
+# ============================================================
+# REJECT OFFER
+# ============================================================
+
+@router.put("/{offer_id}/reject")
+def reject_offer(
+    offer_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+
+    return update_offer_status(
+        offer_id,
+        "rejected",
+        current_user
+    )
