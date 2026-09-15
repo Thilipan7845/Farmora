@@ -193,8 +193,6 @@ def decide_sale(
 
 
 
-    # Expected gain
-
     expected_gain = (
 
         predicted_price - current_price
@@ -202,8 +200,6 @@ def decide_sale(
     )
 
 
-
-    # Price range opportunity
 
     range_supports_waiting = (
 
@@ -271,11 +267,11 @@ def decide_sale(
     if trend == "FALLING":
 
 
-        recommendation = "SELL NOW"
+        recommendation = "SELL_NOW"
 
 
         reasons.append(
-            "Expected price decrease"
+            "EXPECTED_PRICE_DECREASE"
         )
 
 
@@ -293,11 +289,11 @@ def decide_sale(
     ):
 
 
-        recommendation = "SELL NOW"
+        recommendation = "SELL_NOW"
 
 
         reasons.append(
-            "Low prediction confidence"
+            "LOW_PREDICTION_CONFIDENCE"
         )
 
 
@@ -315,11 +311,11 @@ def decide_sale(
     ):
 
 
-        recommendation = "SELL NOW"
+        recommendation = "SELL_NOW"
 
 
         reasons.append(
-            "Waiting period exceeds crop shelf life"
+            "WAITING_EXCEEDS_SHELF_LIFE"
         )
 
 
@@ -348,32 +344,32 @@ def decide_sale(
         if quantity > 1000:
 
 
-            recommendation = "PARTIAL SELL"
+            recommendation = "PARTIAL_SELL"
 
 
             reasons.append(
-                "Profit opportunity detected"
+                "PROFIT_OPPORTUNITY"
             )
 
 
             reasons.append(
-                "Balanced selling and storage strategy"
+                "BALANCED_SELLING_STORAGE"
             )
 
 
         else:
 
 
-            recommendation = "CONSIDER WAITING"
+            recommendation = "CONSIDER_WAITING"
 
 
             reasons.append(
-                "Waiting improves net realization"
+                "WAITING_IMPROVES_REALIZATION"
             )
 
 
             reasons.append(
-                "Prediction confidence supports waiting"
+                "CONFIDENCE_SUPPORTS_WAITING"
             )
 
 
@@ -383,11 +379,11 @@ def decide_sale(
     elif quantity > 1000:
 
 
-        recommendation = "PARTIAL SELL"
+        recommendation = "PARTIAL_SELL"
 
 
         reasons.append(
-            "Large quantity risk management"
+            "LARGE_QUANTITY_RISK_MANAGEMENT"
         )
 
 
@@ -397,11 +393,11 @@ def decide_sale(
     else:
 
 
-        recommendation = "SELL NOW"
+        recommendation = "SELL_NOW"
 
 
         reasons.append(
-            "No strong advantage in waiting"
+            "NO_WAITING_ADVANTAGE"
         )
 
 
