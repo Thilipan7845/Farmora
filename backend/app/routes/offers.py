@@ -17,9 +17,12 @@ def create_offer(
     offer: OfferCreate,
     current_user: dict = Depends(get_current_user),
 ):
+
     buyer_id = current_user["sub"]
 
+
     # Check buyer profile
+
     buyer_result = (
         supabase
         .table("buyers")
@@ -29,51 +32,112 @@ def create_offer(
         .execute()
     )
 
+
     if not buyer_result.data:
         raise HTTPException(
             status_code=404,
             detail="Buyer profile not found",
         )
 
-    # Check crop lot
-    lot_result = (
-        supabase
-        .table("crop_lots")
-        .select("*")
-        .eq("id", offer.crop_lot_id)
-        .single()
-        .execute()
-    )
 
-    if not lot_result.data:
+    # Check crop lot / bulk lot
+
+    lot = None
+
+
+    if offer.bulk_lot_id:
+
+        result = (
+            supabase
+            .table("bulk_lots")
+            .select("*")
+            .eq("id", offer.bulk_lot_id)
+            .single()
+            .execute()
+        )
+
+        lot = result.data
+
+
+    elif offer.crop_lot_id:
+
+        result = (
+            supabase
+            .table("crop_lots")
+            .select("*")
+            .eq("id", offer.crop_lot_id)
+            .single()
+            .execute()
+        )
+
+        lot = result.data
+
+
+    else:
+
+        raise HTTPException(
+            status_code=400,
+            detail="crop_lot_id or bulk_lot_id is required",
+        )
+
+
+    if not lot:
+
         raise HTTPException(
             status_code=404,
-            detail="Crop lot not found",
+            detail="Lot not found",
         )
 
-    crop_lot = lot_result.data
 
-    # Crop lot must be available
-    if crop_lot["availability"] != "available":
+    # Availability check
+
+    if "availability" in lot:
+
+        if lot["availability"] != "available":
+
+            raise HTTPException(
+                status_code=400,
+                detail="Crop lot is not available",
+            )
+
+
+    elif "status" in lot:
+
+        if lot["status"] != "available":
+
+            raise HTTPException(
+                status_code=400,
+                detail="Bulk lot is not available",
+            )
+
+
+    # Quantity check
+
+    if offer.quantity <= 0:
+
         raise HTTPException(
             status_code=400,
-            detail="Crop lot is not available",
+            detail="Quantity must be greater than zero",
         )
 
-    # Offer quantity cannot exceed crop quantity
-    if offer.quantity > float(crop_lot["quantity"]):
+
+    if offer.quantity > float(lot["quantity"]):
+
         raise HTTPException(
             status_code=400,
-            detail="Offer quantity exceeds available crop quantity",
+            detail="Offer quantity exceeds available quantity",
         )
+
 
     # Create offer
-    result = (
+
+    offer_result = (
         supabase
         .table("offers")
         .insert(
             {
                 "crop_lot_id": offer.crop_lot_id,
+                "bulk_lot_id": offer.bulk_lot_id,
                 "buyer_id": buyer_id,
                 "quantity": offer.quantity,
                 "offered_price": offer.offered_price,
@@ -83,16 +147,20 @@ def create_offer(
         .execute()
     )
 
-    if not result.data:
+
+    if not offer_result.data:
+
         raise HTTPException(
             status_code=400,
             detail="Failed to create offer",
         )
 
+
     return {
         "message": "Offer created successfully",
-        "offer": result.data[0],
+        "offer": offer_result.data[0],
     }
+
 
 
 # ============================================================
@@ -103,16 +171,22 @@ def create_offer(
 def get_my_offers(
     current_user: dict = Depends(get_current_user),
 ):
+
     buyer_id = current_user["sub"]
+
 
     result = (
         supabase
         .table("offers")
         .select("*")
         .eq("buyer_id", buyer_id)
-        .order("created_at", desc=True)
+        .order(
+            "created_at",
+            desc=True
+        )
         .execute()
     )
+
 
     return {
         "buyer_id": buyer_id,
@@ -120,181 +194,107 @@ def get_my_offers(
     }
 
 
+
 # ============================================================
-# FARMER — INCOMING OFFERS
+# FARMER / FPO — INCOMING OFFERS
 # ============================================================
 
 @router.get("/incoming")
 def get_incoming_offers(
     current_user: dict = Depends(get_current_user),
 ):
-    farmer_id = current_user["sub"]
 
-    # Find crop lots owned by this farmer
-    lots_result = (
+    user_id = current_user["sub"]
+
+
+    # Farmer crop lots
+
+    crop_result = (
         supabase
         .table("crop_lots")
         .select("id")
-        .eq("farmer_id", farmer_id)
+        .eq("farmer_id", user_id)
         .execute()
     )
 
-    lot_ids = [
-        lot["id"]
-        for lot in lots_result.data
+
+    crop_ids = [
+        item["id"]
+        for item in crop_result.data
     ]
 
-    if not lot_ids:
-        return {
-            "farmer_id": farmer_id,
-            "offers": [],
-        }
 
-    # Find offers for the farmer's crop lots
-    offers_result = (
+
+    # FPO profile lookup
+
+    fpo_result = (
         supabase
-        .table("offers")
-        .select("*")
-        .in_("crop_lot_id", lot_ids)
-        .order("created_at", desc=True)
+        .table("fpos")
+        .select("id")
+        .eq("user_id", user_id)
         .execute()
     )
 
-    offers = offers_result.data
 
-    # Find buyer IDs
-    buyer_ids = list(
-        {
-            offer["buyer_id"]
-            for offer in offers
-        }
+    fpo_ids = [
+        item["id"]
+        for item in fpo_result.data
+    ]
+
+
+
+    # FPO bulk lots
+
+    bulk_result = (
+        supabase
+        .table("bulk_lots")
+        .select("id")
+        .in_("fpo_id", fpo_ids)
+        .execute()
     )
 
-    buyers = {}
 
-    if buyer_ids:
-
-        buyers_result = (
-            supabase
-            .table("buyers")
-            .select("*")
-            .in_("id", buyer_ids)
-            .execute()
-        )
-
-        buyers = {
-            buyer["id"]: buyer
-            for buyer in buyers_result.data
-        }
-
-    # Add buyer information to every offer
-    enriched_offers = []
-
-    for offer in offers:
-
-        buyer = buyers.get(
-            offer["buyer_id"],
-            {},
-        )
-
-        enriched_offers.append(
-            {
-                **offer,
-                "buyer": {
-                    "id": offer["buyer_id"],
-                    "company_name": buyer.get(
-                        "company_name"
-                    ),
-                    "business_type": buyer.get(
-                        "business_type"
-                    ),
-                    "district": buyer.get(
-                        "district"
-                    ),
-                    "state": buyer.get(
-                        "state"
-                    ),
-                },
-            }
-        )
-
-    return {
-        "farmer_id": farmer_id,
-        "offers": enriched_offers,
-    }
+    bulk_ids = [
+        item["id"]
+        for item in bulk_result.data
+    ]
 
 
-# ============================================================
-# BUYER — GET SINGLE OFFER
-# ============================================================
 
-@router.get("/{offer_id}")
-def get_offer(
-    offer_id: str,
-    current_user: dict = Depends(get_current_user),
-):
-    buyer_id = current_user["sub"]
+    # Fetch offers
 
     result = (
         supabase
         .table("offers")
         .select("*")
-        .eq("id", offer_id)
-        .eq("buyer_id", buyer_id)
-        .single()
         .execute()
     )
 
-    if not result.data:
-        raise HTTPException(
-            status_code=404,
-            detail="Offer not found",
-        )
 
-    return result.data
+    offers = []
 
 
-# ============================================================
-# BUYER — UPDATE OFFER
-# ============================================================
+    for offer in result.data:
 
-@router.put("/{offer_id}")
-def update_offer(
-    offer_id: str,
-    offer: OfferCreate,
-    current_user: dict = Depends(get_current_user),
-):
-    buyer_id = current_user["sub"]
+        if (
+            offer.get("crop_lot_id") in crop_ids
+            or
+            offer.get("bulk_lot_id") in bulk_ids
+        ):
 
-    result = (
-        supabase
-        .table("offers")
-        .update(
-            {
-                "quantity": offer.quantity,
-                "offered_price": offer.offered_price,
-                "message": offer.message,
-            }
-        )
-        .eq("id", offer_id)
-        .eq("buyer_id", buyer_id)
-        .execute()
-    )
+            offers.append(offer)
 
-    if not result.data:
-        raise HTTPException(
-            status_code=404,
-            detail="Offer not found",
-        )
+
 
     return {
-        "message": "Offer updated successfully",
-        "offer": result.data[0],
+        "user_id": user_id,
+        "offers": offers,
     }
 
 
+
 # ============================================================
-# FARMER — ACCEPT / REJECT OFFER
+# UPDATE OFFER STATUS
 # ============================================================
 
 @router.put("/{offer_id}/status")
@@ -303,16 +303,21 @@ def update_offer_status(
     status: str,
     current_user: dict = Depends(get_current_user),
 ):
-    farmer_id = current_user["sub"]
 
-    # Only these statuses are allowed
-    if status not in ["accepted", "rejected"]:
+    user_id = current_user["sub"]
+
+
+    if status not in [
+        "accepted",
+        "rejected",
+    ]:
+
         raise HTTPException(
             status_code=400,
-            detail="Status must be 'accepted' or 'rejected'",
+            detail="Invalid status",
         )
 
-    # Find offer
+
     offer_result = (
         supabase
         .table("offers")
@@ -322,115 +327,124 @@ def update_offer_status(
         .execute()
     )
 
+
     if not offer_result.data:
+
         raise HTTPException(
             status_code=404,
             detail="Offer not found",
         )
 
+
     offer = offer_result.data
 
-    # Check that the farmer owns the crop lot
-    lot_result = (
-        supabase
-        .table("crop_lots")
-        .select("*")
-        .eq("id", offer["crop_lot_id"])
-        .eq("farmer_id", farmer_id)
-        .single()
-        .execute()
-    )
 
-    if not lot_result.data:
-        raise HTTPException(
-            status_code=403,
-            detail="You are not allowed to update this offer",
+    allowed = False
+
+
+
+    # Farmer ownership
+
+    if offer.get("crop_lot_id"):
+
+        crop_check = (
+            supabase
+            .table("crop_lots")
+            .select("id")
+            .eq(
+                "id",
+                offer["crop_lot_id"]
+            )
+            .eq(
+                "farmer_id",
+                user_id
+            )
+            .execute()
         )
 
-    crop_lot = lot_result.data
 
-    # --------------------------------------------------------
-    # ACCEPT OFFER
-    # --------------------------------------------------------
+        allowed = bool(crop_check.data)
 
-    if status == "accepted":
 
-        if crop_lot["availability"] != "available":
-            raise HTTPException(
-                status_code=400,
-                detail="Crop lot is no longer available",
+
+    # FPO ownership
+
+    if offer.get("bulk_lot_id"):
+
+
+        fpo_result = (
+            supabase
+            .table("fpos")
+            .select("id")
+            .eq(
+                "user_id",
+                user_id
             )
+            .execute()
+        )
 
-        if offer["quantity"] > float(
-            crop_lot["quantity"]
-        ):
-            raise HTTPException(
-                status_code=400,
-                detail="Offer quantity exceeds available crop quantity",
+
+        fpo_ids = [
+            item["id"]
+            for item in fpo_result.data
+        ]
+
+
+
+        bulk_check = (
+            supabase
+            .table("bulk_lots")
+            .select("id")
+            .eq(
+                "id",
+                offer["bulk_lot_id"]
             )
+            .in_(
+                "fpo_id",
+                fpo_ids
+            )
+            .execute()
+        )
 
-    # Update offer status
+
+        allowed = bool(bulk_check.data)
+
+
+
+    if not allowed:
+
+        raise HTTPException(
+            status_code=403,
+            detail="Not allowed",
+        )
+
+
+
     result = (
         supabase
         .table("offers")
         .update(
             {
-                "status": status,
+                "status": status
             }
         )
-        .eq("id", offer_id)
+        .eq(
+            "id",
+            offer_id
+        )
         .execute()
     )
 
-    if not result.data:
-        raise HTTPException(
-            status_code=400,
-            detail="Failed to update offer status",
-        )
-
-    # --------------------------------------------------------
-    # RESERVE CROP LOT AFTER ACCEPTANCE
-    # --------------------------------------------------------
-
-    if status == "accepted":
-
-        reserve_result = (
-            supabase
-            .table("crop_lots")
-            .update(
-                {
-                    "availability": "reserved",
-                }
-            )
-            .eq(
-                "id",
-                crop_lot["id"],
-            )
-            .eq(
-                "farmer_id",
-                farmer_id,
-            )
-            .execute()
-        )
-
-        if not reserve_result.data:
-            raise HTTPException(
-                status_code=400,
-                detail="Offer accepted but crop lot could not be reserved",
-            )
 
     return {
-        "message": (
-            "Offer accepted successfully"
-            if status == "accepted"
-            else "Offer rejected successfully"
-        ),
+        "message": "Offer status updated",
         "offer": result.data[0],
     }
 
 
+
 # ============================================================
-# CREATE NEGOTIATION
+# NEGOTIATION
 # ============================================================
 
 @router.post("/negotiations")
@@ -438,61 +452,8 @@ def create_negotiation(
     negotiation: NegotiationCreate,
     current_user: dict = Depends(get_current_user),
 ):
-    user_id = current_user["sub"]
 
-    # Find offer
-    offer_result = (
-        supabase
-        .table("offers")
-        .select("*")
-        .eq("id", negotiation.offer_id)
-        .single()
-        .execute()
-    )
 
-    if not offer_result.data:
-        raise HTTPException(
-            status_code=404,
-            detail="Offer not found",
-        )
-
-    offer = offer_result.data
-
-    # --------------------------------------------------------
-    # BUYER OR FARMER MUST OWN THE OFFER
-    # --------------------------------------------------------
-
-    if offer["buyer_id"] == user_id:
-
-        allowed = True
-
-    else:
-
-        lot_result = (
-            supabase
-            .table("crop_lots")
-            .select("id")
-            .eq(
-                "id",
-                offer["crop_lot_id"],
-            )
-            .eq(
-                "farmer_id",
-                user_id,
-            )
-            .single()
-            .execute()
-        )
-
-        allowed = bool(lot_result.data)
-
-    if not allowed:
-        raise HTTPException(
-            status_code=403,
-            detail="You are not allowed to negotiate this offer",
-        )
-
-    # Create negotiation
     result = (
         supabase
         .table("negotiations")
@@ -508,93 +469,16 @@ def create_negotiation(
         .execute()
     )
 
+
     if not result.data:
+
         raise HTTPException(
             status_code=400,
             detail="Failed to create negotiation",
         )
 
+
     return {
         "message": "Negotiation created successfully",
         "negotiation": result.data[0],
-    }
-
-
-# ============================================================
-# GET NEGOTIATIONS
-# ============================================================
-
-@router.get("/{offer_id}/negotiations")
-def get_negotiations(
-    offer_id: str,
-    current_user: dict = Depends(get_current_user),
-):
-    user_id = current_user["sub"]
-
-    # Find offer
-    offer_result = (
-        supabase
-        .table("offers")
-        .select("*")
-        .eq("id", offer_id)
-        .single()
-        .execute()
-    )
-
-    if not offer_result.data:
-        raise HTTPException(
-            status_code=404,
-            detail="Offer not found",
-        )
-
-    offer = offer_result.data
-
-    # Buyer owns offer
-    allowed = offer["buyer_id"] == user_id
-
-    # Farmer owns crop lot
-    if not allowed:
-
-        lot_result = (
-            supabase
-            .table("crop_lots")
-            .select("id")
-            .eq(
-                "id",
-                offer["crop_lot_id"],
-            )
-            .eq(
-                "farmer_id",
-                user_id,
-            )
-            .single()
-            .execute()
-        )
-
-        allowed = bool(lot_result.data)
-
-    if not allowed:
-        raise HTTPException(
-            status_code=403,
-            detail="You are not allowed to view these negotiations",
-        )
-
-    result = (
-        supabase
-        .table("negotiations")
-        .select("*")
-        .eq(
-            "offer_id",
-            offer_id,
-        )
-        .order(
-            "created_at",
-            desc=False,
-        )
-        .execute()
-    )
-
-    return {
-        "offer_id": offer_id,
-        "negotiations": result.data,
     }

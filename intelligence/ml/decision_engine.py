@@ -266,9 +266,25 @@ def decide_sale(
     # ========================================================
 
 
+    # 0. No storage + low demand
+    # Highest priority risk condition
+
+    if (
+        not storage_available
+        and
+        demand_level == "LOW"
+    ):
+
+        recommendation = "SELL NOW"
+
+        reasons.append(
+            "Storage unavailable and demand is low"
+        )
+
+
     # 1. Falling price
 
-    if trend == "FALLING":
+    elif trend == "FALLING":
 
 
         recommendation = "SELL NOW"

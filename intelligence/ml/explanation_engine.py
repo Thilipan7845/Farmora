@@ -1,6 +1,7 @@
 # ============================================================
 # Farmora Explanation Engine
 # Converts ML decisions into farmer-friendly messages
+# Localization-friendly output
 # ============================================================
 
 
@@ -13,12 +14,10 @@ def generate_farmer_explanation(
     confidence_score
 ):
 
-
     message_parts = []
 
-
     # --------------------------------------------------------
-    # Recommendation explanation
+    # Recommendation explanation (legacy farmer_message)
     # --------------------------------------------------------
 
     if recommendation == "SELL NOW":
@@ -42,32 +41,32 @@ def generate_farmer_explanation(
         )
 
 
+    # --------------------------------------------------------
+    # Quantity strategy
+    # --------------------------------------------------------
 
-    # --------------------------------------------------------
-    # Quantity strategy explanation
-    # --------------------------------------------------------
+    sell_quantity = 0
+    store_quantity = 0
 
     quantity_message = None
 
 
     if quantity_strategy:
 
+        sell_quantity = quantity_strategy.get(
+            "sell_now_quantity",
+            0
+        )
 
-        sell_qty = quantity_strategy[
-            "sell_now_quantity"
-        ]
-
-
-        store_qty = quantity_strategy[
-            "store_quantity"
-        ]
+        store_quantity = quantity_strategy.get(
+            "store_quantity",
+            0
+        )
 
 
         quantity_message = (
-
-            f"Sell {sell_qty} kg now "
-            f"and store {store_qty} kg."
-            
+            f"Sell {sell_quantity} kg now "
+            f"and store {store_quantity} kg."
         )
 
 
@@ -76,30 +75,34 @@ def generate_farmer_explanation(
         )
 
 
-
     # --------------------------------------------------------
     # Profit explanation
     # --------------------------------------------------------
 
     profit_message = None
+    expected_benefit = 0
 
 
     if profit_analysis:
 
+        profit_difference = profit_analysis.get(
+            "profit_difference",
+            0
+        )
 
-        profit_difference = profit_analysis[
-            "profit_difference"
-        ]
+
+        expected_benefit = round(
+            profit_difference,
+            2
+        )
 
 
         if profit_difference > 0:
 
             profit_message = (
-
                 f"Expected additional benefit "
-                f"is ₹{round(profit_difference,2)} "
+                f"is ₹{expected_benefit} "
                 f"by following this strategy."
-
             )
 
 
@@ -111,9 +114,7 @@ def generate_farmer_explanation(
         else:
 
             profit_message = (
-
                 "Selling now gives better expected realization."
-
             )
 
 
@@ -122,9 +123,8 @@ def generate_farmer_explanation(
             )
 
 
-
     # --------------------------------------------------------
-    # Confidence explanation
+    # Confidence
     # --------------------------------------------------------
 
     if confidence_score >= 70:
@@ -142,40 +142,85 @@ def generate_farmer_explanation(
         confidence = "LOW"
 
 
+    # --------------------------------------------------------
+    # Localization message key
+    # --------------------------------------------------------
+
+    if recommendation == "PARTIAL SELL":
+
+        message_key = "PARTIAL_SELL_EXPLANATION"
+
+
+    elif recommendation == "SELL NOW":
+
+        message_key = "SELL_NOW_EXPLANATION"
+
+
+    elif recommendation == "CONSIDER WAITING":
+
+        message_key = "CONSIDER_WAITING_EXPLANATION"
+
+
+    else:
+
+        message_key = "GENERAL_EXPLANATION"
+
+
+
+    # --------------------------------------------------------
+    # Final response
+    # --------------------------------------------------------
 
     return {
 
-
+        # Keep old field for backward compatibility
         "farmer_message":
-
             " ".join(message_parts),
 
 
+        # New localization-friendly format
+        "farmer_explanation": {
+
+            "message_key":
+                message_key,
+
+
+            "parameters": {
+
+                "crop":
+                    crop,
+
+
+                "sell_quantity":
+                    sell_quantity,
+
+
+                "store_quantity":
+                    store_quantity,
+
+
+                "expected_benefit":
+                    expected_benefit
+            }
+        },
+
 
         "action":
-
             recommendation,
 
 
-
         "confidence":
-
             confidence,
 
 
-
         "reasons":
-
             reasons,
 
 
         "quantity_strategy":
-
             quantity_strategy,
 
 
         "profit_summary":
-
             profit_message
-
     }
