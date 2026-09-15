@@ -1,11 +1,27 @@
 import 'package:flutter/material.dart';
-import 'screens/fpo/fpo_dashboard.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'core/config/supabase_config.dart';
+//import 'core/localization/language_controller.dart';
+import 'core/theme/app_theme.dart';
+import 'screens/splash/splash_screen.dart';
 
 
-void main() {
+Future<void> main() async {
+
+  WidgetsFlutterBinding.ensureInitialized();
+
+
+await Supabase.initialize(
+  url: SupabaseConfig.url,
+  publishableKey: SupabaseConfig.publishableKey,
+);
 
   runApp(
+
     const FarmoraApp(),
+
   );
 
 }
@@ -19,7 +35,6 @@ class FarmoraApp extends StatelessWidget {
   });
 
 
-
   @override
   Widget build(BuildContext context) {
 
@@ -29,49 +44,34 @@ class FarmoraApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
 
 
-      title: 'Farmora',
+      title: "Farmora",
 
 
-
-      theme: ThemeData(
-
-        useMaterial3: true,
+      theme: AppTheme.lightTheme,
 
 
-        colorScheme: ColorScheme.fromSeed(
+      localizationsDelegates: const [
 
-          seedColor: const Color(0xff315C38),
+        GlobalMaterialLocalizations.delegate,
 
-        ),
+        GlobalWidgetsLocalizations.delegate,
 
+        GlobalCupertinoLocalizations.delegate,
 
-        scaffoldBackgroundColor:
-
-        const Color(0xffF6F7F2),
-
+      ],
 
 
-        appBarTheme: const AppBarTheme(
+      supportedLocales: const [
 
-          elevation: 0,
+        Locale("en"),
 
-          backgroundColor: Colors.transparent,
-
-          foregroundColor: Colors.black,
-
-        ),
+      ],
 
 
-      ),
-
-
-
-      home: const FpoDashboard(),
-
+      home: const SplashScreen(),
 
     );
 
-
   }
 
-}
+  }
