@@ -1,6 +1,6 @@
 # ============================================================
 # Farmora Explanation Engine
-# Converts ML decisions into farmer-friendly messages
+# Converts ML decisions into localization-friendly responses
 # ============================================================
 
 
@@ -14,117 +14,8 @@ def generate_farmer_explanation(
 ):
 
 
-    message_parts = []
-
-
     # --------------------------------------------------------
-    # Recommendation explanation
-    # --------------------------------------------------------
-
-    if recommendation == "SELL NOW":
-
-        message_parts.append(
-            f"Sell your {crop} now to avoid possible price loss."
-        )
-
-
-    elif recommendation == "CONSIDER WAITING":
-
-        message_parts.append(
-            f"Waiting may give better returns for your {crop}."
-        )
-
-
-    elif recommendation == "PARTIAL SELL":
-
-        message_parts.append(
-            f"Split your {crop} quantity to reduce risk and improve returns."
-        )
-
-
-
-    # --------------------------------------------------------
-    # Quantity strategy explanation
-    # --------------------------------------------------------
-
-    quantity_message = None
-
-
-    if quantity_strategy:
-
-
-        sell_qty = quantity_strategy[
-            "sell_now_quantity"
-        ]
-
-
-        store_qty = quantity_strategy[
-            "store_quantity"
-        ]
-
-
-        quantity_message = (
-
-            f"Sell {sell_qty} kg now "
-            f"and store {store_qty} kg."
-            
-        )
-
-
-        message_parts.append(
-            quantity_message
-        )
-
-
-
-    # --------------------------------------------------------
-    # Profit explanation
-    # --------------------------------------------------------
-
-    profit_message = None
-
-
-    if profit_analysis:
-
-
-        profit_difference = profit_analysis[
-            "profit_difference"
-        ]
-
-
-        if profit_difference > 0:
-
-            profit_message = (
-
-                f"Expected additional benefit "
-                f"is ₹{round(profit_difference,2)} "
-                f"by following this strategy."
-
-            )
-
-
-            message_parts.append(
-                profit_message
-            )
-
-
-        else:
-
-            profit_message = (
-
-                "Selling now gives better expected realization."
-
-            )
-
-
-            message_parts.append(
-                profit_message
-            )
-
-
-
-    # --------------------------------------------------------
-    # Confidence explanation
+    # Confidence classification
     # --------------------------------------------------------
 
     if confidence_score >= 70:
@@ -143,13 +34,115 @@ def generate_farmer_explanation(
 
 
 
+    # --------------------------------------------------------
+    # Explanation key selection
+    # --------------------------------------------------------
+
+    if recommendation == "SELL_NOW":
+
+        message_key = "SELL_NOW_EXPLANATION"
+
+
+    elif recommendation == "CONSIDER_WAITING":
+
+        message_key = "CONSIDER_WAITING_EXPLANATION"
+
+
+    elif recommendation == "PARTIAL_SELL":
+
+        message_key = "PARTIAL_SELL_EXPLANATION"
+
+
+    else:
+
+        message_key = "GENERAL_EXPLANATION"
+
+
+
+    # --------------------------------------------------------
+    # Dynamic parameters
+    # --------------------------------------------------------
+
+    parameters = {}
+
+
+
+    # Quantity information
+
+    if quantity_strategy:
+
+
+        parameters["sell_quantity"] = (
+
+            quantity_strategy[
+                "sell_now_quantity"
+            ]
+
+        )
+
+
+        parameters["store_quantity"] = (
+
+            quantity_strategy[
+                "store_quantity"
+            ]
+
+        )
+
+
+
+    # Profit information
+
+    profit_summary = None
+
+
+    if profit_analysis:
+
+
+        profit_difference = profit_analysis[
+
+            "profit_difference"
+
+        ]
+
+
+        parameters["expected_benefit"] = round(
+
+            profit_difference,
+
+            2
+
+        )
+
+
+        profit_summary = {
+
+            "profit_difference":
+
+                round(
+                    profit_difference,
+                    2
+                )
+
+        }
+
+
+
+    # --------------------------------------------------------
+    # Return localization-ready response
+    # --------------------------------------------------------
+
     return {
 
 
-        "farmer_message":
+        "message_key":
 
-            " ".join(message_parts),
+            message_key,
 
+
+        "parameters":
+
+            parameters,
 
 
         "action":
@@ -157,11 +150,9 @@ def generate_farmer_explanation(
             recommendation,
 
 
-
         "confidence":
 
             confidence,
-
 
 
         "reasons":
@@ -176,6 +167,6 @@ def generate_farmer_explanation(
 
         "profit_summary":
 
-            profit_message
+            profit_summary
 
     }
