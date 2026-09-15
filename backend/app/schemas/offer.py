@@ -7,7 +7,8 @@ from typing import Optional
 # ============================================================
 
 class OfferCreate(BaseModel):
-    crop_lot_id: str
+    crop_lot_id: Optional[str] = None
+    bulk_lot_id: Optional[str] = None
     quantity: float
     offered_price: float
     message: Optional[str] = None
